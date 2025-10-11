@@ -46,7 +46,7 @@
     </td>
     <td align="center">
       <img src="readme_photos/ricky_headshot.jpg" width="150px"><br>
-      <sub><b>Ricky Speidell 2</b></sub><br>
+      <sub><b>Ricky Speidell</b></sub><br>
       <sub>Physics, William & Mary</sub>
     </td>
     <td align="center">
