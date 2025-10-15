@@ -3,7 +3,6 @@ import torch.nn as nn
 from torchvision import models
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
-from pretrained_cnn import BenthicDataset
 from sklearn.model_selection import train_test_split
 import pandas as pd
 from pathlib import Path
@@ -47,6 +46,20 @@ weights = models.ResNet50_Weights.DEFAULT
 
 test_transforms = weights.transforms()
 
+class BenthicDataset(Dataset):
+    def __init__(self, df, transform):
+        self.df = df.reset_index(drop = True)
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.df)
+    
+    def __getitem__(self,idx):
+        row = self.df.iloc[idx]
+        image = Image.open(row['path'])
+        label = row['label_id']
+        image = self.transform(image)
+        return image, label
 
 test_dataset = BenthicDataset(test_df, test_transforms)
 
@@ -103,3 +116,4 @@ disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0,1,2,3,4,5,6
 disp.plot(cmap=plt.cm.Blues)
 plt.show()
 print(f"test accuracy: {test_acc}")
+
