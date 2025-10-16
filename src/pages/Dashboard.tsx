@@ -32,11 +32,15 @@ import {
   EditableInput,
   EditableTextarea,
   EditablePreview,
-  Tooltip
+  Tooltip,
+  Input,
+  Textarea,
+  FormControl,
+  FormLabel
 } from '@chakra-ui/react';
 import { FaUpload, FaChartLine, FaHistory, FaFish, FaFolder, FaPlus, FaTrash } from 'react-icons/fa';
 import { Link as RouterLink } from 'react-router-dom';
-import { collection, query, where, getDocs, Timestamp, orderBy, limit, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy, limit, updateDoc, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -65,7 +69,11 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const { isOpen: isAddOpen, onOpen: onAddOpen, onClose: onAddClose } = useDisclosure();
   const { currentUser } = useAuth();
   const toast = useToast();
   const cardBg = useColorModeValue('white', 'gray.800');
@@ -344,6 +352,61 @@ const Dashboard = () => {
     onDeleteOpen();
   };
 
+  const handleCreateProject = async () => {
+    if (!currentUser || !newProjectName.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a project name.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      setIsCreatingProject(true);
+      const docRef = await addDoc(collection(db, 'projects'), {
+        name: newProjectName.trim(),
+        description: newProjectDescription.trim() || '',
+        userId: currentUser.uid,
+        createdAt: serverTimestamp(),
+      });
+
+      const newProject: Project = {
+        id: docRef.id,
+        name: newProjectName.trim(),
+        description: newProjectDescription.trim() || '',
+        userId: currentUser.uid,
+        createdAt: Timestamp.now(),
+      };
+
+      setProjects(prev => [newProject, ...prev]);
+      setNewProjectName('');
+      setNewProjectDescription('');
+      onAddClose();
+
+      toast({
+        title: 'Success',
+        description: 'Project created successfully!',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create project. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
   const getSpeciesBadgeColor = (species: string) => {
     const colors: Record<string, string> = {
       scallop: 'green',
@@ -436,14 +499,12 @@ const Dashboard = () => {
                   Your Projects
                 </Heading>
                 <Button 
-                  as={RouterLink} 
-                  to="/metrics" 
-                  variant="outline"
+                  onClick={onAddOpen}
                   colorScheme="brand"
                   size="sm"
-                  rightIcon={<FaFolder />}
+                  leftIcon={<FaPlus />}
                 >
-                  View All
+                  Add Project
                 </Button>
               </HStack>
 
@@ -555,8 +616,7 @@ const Dashboard = () => {
                       No projects yet. Create your first project to organize your analyses!
                     </Text>
                     <Button 
-                      as={RouterLink} 
-                      to="/analysis" 
+                      onClick={onAddOpen}
                       colorScheme="brand" 
                       leftIcon={<FaPlus />}
                       mt={2}
@@ -710,6 +770,55 @@ const Dashboard = () => {
             </Box>
           </VStack>
         </Container>
+
+      {/* Add Project Modal */}
+      <Modal isOpen={isAddOpen} onClose={onAddClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Create New Project</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4} align="stretch">
+              <FormControl isRequired>
+                <FormLabel>Project Name</FormLabel>
+                <Input
+                  placeholder="Enter project name"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleCreateProject();
+                    }
+                  }}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Description (Optional)</FormLabel>
+                <Textarea
+                  placeholder="Enter project description"
+                  value={newProjectDescription}
+                  onChange={(e) => setNewProjectDescription(e.target.value)}
+                  rows={3}
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onAddClose}>
+              Cancel
+            </Button>
+            <Button 
+              colorScheme="brand" 
+              onClick={handleCreateProject}
+              isLoading={isCreatingProject}
+              leftIcon={<FaPlus />}
+            >
+              Create Project
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} isCentered>
