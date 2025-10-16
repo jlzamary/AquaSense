@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
   Box,
-  Button,
   Card,
   CardBody,
   CardHeader,
@@ -24,7 +23,7 @@ import {
   Flex,
   Spinner,
 } from '@chakra-ui/react';
-import { FaChartBar, FaFolder, FaImage, FaArrowLeft, FaCalendar, FaPercentage } from 'react-icons/fa';
+import { FaChartBar, FaFolder, FaImage, FaCalendar, FaPercentage } from 'react-icons/fa';
 import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -379,9 +378,9 @@ const Metrics = () => {
                         cx="50%"
                         cy="50%"
                         outerRadius={100}
-                        label={({ name, percentage }) => `${name} (${percentage.toFixed(1)}%)`}
+                        label={({ name, percent }: any) => `${name} (${(percent * 100).toFixed(1)}%)`}
                       >
-                        {metrics.speciesBreakdown.map((entry, index) => (
+                        {metrics.speciesBreakdown.map((_entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
