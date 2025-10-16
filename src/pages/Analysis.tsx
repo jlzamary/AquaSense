@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Box, 
@@ -45,7 +45,7 @@ import {
   Spacer
 } from '@chakra-ui/react';
 import { useDropzone } from 'react-dropzone';
-import { FaUpload, FaImage, FaTimes, FaSpinner, FaCheck, FaFolder, FaFilter, FaSortAmountDown, FaDownload, FaTrash, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaUpload, FaImage, FaTimes, FaSpinner, FaCheck, FaFolder, FaFilter, FaSortAmountDown, FaDownload, FaTrash, FaMapMarkerAlt, FaCamera } from 'react-icons/fa';
 import { SearchIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import { keyframes } from '@emotion/react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -151,6 +151,7 @@ const Analysis = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { currentUser } = useAuth();
   const toast = useToast();
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   
   // Theme
   const cardBg = useColorModeValue('white', 'gray.800');
@@ -180,6 +181,35 @@ const Analysis = () => {
     maxFiles: 10,
     multiple: true
   });
+
+  // Camera capture handler
+  const handleCameraCapture = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const capturedFiles = event.target.files;
+    if (capturedFiles && capturedFiles.length > 0) {
+      const filesArray = Array.from(capturedFiles);
+      const newFiles = filesArray.map(file => {
+        const uploadedFile = Object.assign(file, {
+          preview: URL.createObjectURL(file),
+          uploadProgress: 0,
+          uploadComplete: false,
+          error: undefined,
+          prediction: null
+        }) as UploadedFile;
+        return uploadedFile;
+      });
+      
+      setFiles(prevFiles => [...prevFiles, ...newFiles]);
+      
+      // Reset the input so the same file can be captured again
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
+      }
+    }
+  }, []);
+
+  const openCamera = () => {
+    cameraInputRef.current?.click();
+  };
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -640,32 +670,59 @@ const Analysis = () => {
             <TabPanel p={0} pt={6}>
               <VStack spacing={6}>
                 {/* Dropzone */}
-                <Box
-                  {...getRootProps()}
-                  borderWidth={2}
-                  borderStyle="dashed"
-                  borderColor={isDragActive ? 'brand.400' : 'gray.300'}
-                  borderRadius="lg"
-                  p={10}
-                  textAlign="center"
-                  bg={isDragActive ? 'brand.50' : 'transparent'}
-                  cursor="pointer"
-                  transition="all 0.2s"
-                  _hover={{ borderColor: 'brand.300' }}
-                  w="100%"
-                >
-                  <input {...getInputProps()} />
-                  <VStack spacing={4}>
-                    <Icon as={FaUpload} boxSize={8} color="brand.500" />
-                    <Box>
-                      <Text fontWeight="medium" fontSize="lg">
-                        {isDragActive ? 'Drop the files here' : 'Drag & drop images here, or click to select files'}
-                      </Text>
-                      <Text fontSize="sm" color="gray.500" mt={1}>
-                        Supports JPG, JPEG, PNG (max 10MB each)
-                      </Text>
-                    </Box>
-                  </VStack>
+                <Box w="100%">
+                  <Box
+                    {...getRootProps()}
+                    borderWidth={2}
+                    borderStyle="dashed"
+                    borderColor={isDragActive ? 'brand.400' : 'gray.300'}
+                    borderRadius="lg"
+                    p={10}
+                    textAlign="center"
+                    bg={isDragActive ? 'brand.50' : 'transparent'}
+                    cursor="pointer"
+                    transition="all 0.2s"
+                    _hover={{ borderColor: 'brand.300' }}
+                    w="100%"
+                  >
+                    <input {...getInputProps()} />
+                    <VStack spacing={4}>
+                      <Icon as={FaUpload} boxSize={8} color="brand.500" />
+                      <Box>
+                        <Text fontWeight="medium" fontSize="lg">
+                          {isDragActive ? 'Drop the files here' : 'Drag & drop images here, or click to select files'}
+                        </Text>
+                        <Text fontSize="sm" color="gray.500" mt={1}>
+                          Supports JPG, JPEG, PNG (max 10MB each)
+                        </Text>
+                      </Box>
+                    </VStack>
+                  </Box>
+
+                  {/* Hidden camera input */}
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleCameraCapture}
+                    style={{ display: 'none' }}
+                    multiple
+                  />
+
+                  {/* Camera button - Only show on mobile/tablet */}
+                  <Button
+                    onClick={openCamera}
+                    colorScheme="brand"
+                    variant="outline"
+                    leftIcon={<FaCamera />}
+                    w="100%"
+                    mt={4}
+                    size="lg"
+                    display={{ base: 'flex', md: 'none' }}
+                  >
+                    Take Photo
+                  </Button>
                 </Box>
 
                 {/* Uploaded files */}
