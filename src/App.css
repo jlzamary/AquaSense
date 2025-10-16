@@ -1,9 +1,14 @@
+html, body, #root { height: 100%; }
+body { margin: 0; }
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  max-width: none;   /* or just remove the property */
+  margin: 0;
+  padding: 0;
+  text-align: initial; /* let components control alignment */
 }
+
 
 .logo {
   height: 6em;

@@ -1,20 +1,19 @@
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { 
-  Box, 
-  Button, 
-  FormControl, 
-  FormLabel, 
-  Input, 
-  InputGroup, 
-  InputRightElement, 
-  VStack, 
+import {
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  InputGroup,
+  InputRightElement,
+  VStack,
   HStack,
   Text,
   Link,
   useToast,
   Heading,
-  Container,
   useColorModeValue,
   Divider,
   Icon
@@ -32,48 +31,26 @@ const Login = () => {
   const { signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+
   const bg = useColorModeValue('white', 'gray.800');
-  const bgGradient = useColorModeValue(
-    'linear(to-b, brand.50, white)',
-    'linear(to-b, gray.900, gray.800)'
-  );
+  const bgGradient = useColorModeValue('linear(to-b, brand.50, white)', 'linear(to-b, gray.900, gray.800)');
   const textColor = useColorModeValue('gray.600', 'gray.300');
   const headingColor = useColorModeValue('gray.800', 'white');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all fields',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast({ title: 'Error', description: 'Please fill in all fields', status: 'error', duration: 5000, isClosable: true });
       return;
     }
-
     try {
       setIsLoading(true);
       await signIn(email, password);
-      toast({
-        title: 'Success',
-        description: 'Successfully logged in!',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      toast({ title: 'Success', description: 'Successfully logged in!', status: 'success', duration: 3000, isClosable: true });
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to log in. Please check your credentials.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast({ title: 'Error', description: error.message || 'Failed to log in. Please check your credentials.', status: 'error', duration: 5000, isClosable: true });
     } finally {
       setIsLoading(false);
     }
@@ -83,34 +60,24 @@ const Login = () => {
     try {
       setIsGoogleLoading(true);
       await signInWithGoogle();
-      toast({
-        title: 'Success',
-        description: 'Successfully logged in with Google!',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      toast({ title: 'Success', description: 'Successfully logged in with Google!', status: 'success', duration: 3000, isClosable: true });
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Google Sign-in error:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to sign in with Google.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast({ title: 'Error', description: error.message || 'Failed to sign in with Google.', status: 'error', duration: 5000, isClosable: true });
     } finally {
       setIsGoogleLoading(false);
     }
   };
 
   return (
-    <Box minH="100vh" display="flex" alignItems="center" bg={bgGradient} py={8} px={4}>
-      <Container maxW="md" centerContent>
+    <Box w="100vw" minH="100dvh" bg={bgGradient} m={0}>
+      <Box display="flex" alignItems="center" justifyContent="center" minH="inherit" px={4} py={8}>
+        {/* Card */}
         <Box
-          p={{ base: 6, md: 10 }}
+          maxW="md"
           w="100%"
+          p={{ base: 6, md: 10 }}
           borderRadius="xl"
           bg={bg}
           boxShadow="2xl"
@@ -123,7 +90,7 @@ const Login = () => {
             left: 0,
             right: 0,
             height: '4px',
-            bgGradient: 'linear(to-r, brand.400, brand.600)'
+            bgGradient: 'linear(to-r, brand.400, brand.600)',
           }}
         >
           <VStack spacing={8} align="stretch">
@@ -133,8 +100,8 @@ const Login = () => {
               </Heading>
               <Text color={textColor} fontSize="lg">Sign in to continue to AquaSense</Text>
             </Box>
-            
-            <form onSubmit={handleSubmit}>
+
+            <Box as="form" onSubmit={handleSubmit}>
               <VStack spacing={6}>
                 <FormControl id="email" isRequired>
                   <FormLabel color={textColor} fontWeight="medium">Email</FormLabel>
@@ -146,18 +113,13 @@ const Login = () => {
                     size="lg"
                     bg={useColorModeValue('white', 'gray.700')}
                     borderColor={useColorModeValue('gray.200', 'gray.600')}
-                    _hover={{
-                      borderColor: 'brand.300'
-                    }}
-                    _focus={{
-                      borderColor: 'brand.500',
-                      boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)'
-                    }}
+                    _hover={{ borderColor: 'brand.300' }}
+                    _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     px={4}
                     py={6}
                   />
                 </FormControl>
-                
+
                 <FormControl id="password" isRequired>
                   <FormLabel color={textColor} fontWeight="medium">Password</FormLabel>
                   <InputGroup size="lg">
@@ -168,13 +130,8 @@ const Login = () => {
                       placeholder="••••••••"
                       bg={useColorModeValue('white', 'gray.700')}
                       borderColor={useColorModeValue('gray.200', 'gray.600')}
-                      _hover={{
-                        borderColor: 'brand.300'
-                      }}
-                      _focus={{
-                        borderColor: 'brand.500',
-                        boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)'
-                      }}
+                      _hover={{ borderColor: 'brand.300' }}
+                      _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                       px={4}
                       py={6}
                     />
@@ -183,13 +140,8 @@ const Login = () => {
                         variant="ghost"
                         onClick={() => setShowPassword(!showPassword)}
                         color={textColor}
-                        _hover={{
-                          bg: 'transparent',
-                          color: 'brand.500'
-                        }}
-                        _active={{
-                          bg: 'transparent'
-                        }}
+                        _hover={{ bg: 'transparent', color: 'brand.500' }}
+                        _active={{ bg: 'transparent' }}
                       >
                         {showPassword ? <ViewOffIcon /> : <ViewIcon />}
                       </Button>
@@ -202,16 +154,13 @@ const Login = () => {
                       color="brand.500"
                       fontSize="sm"
                       fontWeight="medium"
-                      _hover={{
-                        textDecoration: 'underline',
-                        color: 'brand.600'
-                      }}
+                      _hover={{ textDecoration: 'underline', color: 'brand.600' }}
                     >
                       Forgot password?
                     </Link>
                   </Box>
                 </FormControl>
-                
+
                 <Button
                   colorScheme="brand"
                   size="lg"
@@ -223,9 +172,7 @@ const Login = () => {
                   fontSize="md"
                   fontWeight="semibold"
                   borderRadius="lg"
-                  _active={{
-                    transform: 'translateY(0)',
-                  }}
+                  _active={{ transform: 'translateY(0)' }}
                   transition="all 0.2s"
                   bgGradient="linear(to-r, brand.400, brand.600)"
                   _hover={{
@@ -255,35 +202,28 @@ const Login = () => {
                   fontSize="md"
                   fontWeight="semibold"
                   borderColor={useColorModeValue('gray.300', 'gray.600')}
-                  _hover={{
-                    bg: useColorModeValue('gray.50', 'gray.700')
-                  }}
+                  _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
                 >
                   Sign in with Google
                 </Button>
-                
+
                 <HStack spacing={1} justify="center" mt={4}>
-                  <Text color={textColor}>
-                    Don't have an account?
-                  </Text>
-                  <Link 
-                    as={RouterLink} 
-                    to="/signup" 
+                  <Text color={textColor}>Don't have an account?</Text>
+                  <Link
+                    as={RouterLink}
+                    to="/signup"
                     color="brand.500"
                     fontWeight="semibold"
-                    _hover={{
-                      textDecoration: 'underline',
-                      color: 'brand.600'
-                    }}
+                    _hover={{ textDecoration: 'underline', color: 'brand.600' }}
                   >
                     Sign up
                   </Link>
                 </HStack>
               </VStack>
-            </form>
+            </Box>
           </VStack>
         </Box>
-      </Container>
+      </Box>
     </Box>
   );
 };
