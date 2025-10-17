@@ -321,12 +321,14 @@ const Analysis = () => {
         let q;
         if (selectedProjectId) {
           console.log('Fetching analyses for project:', selectedProjectId);
+          console.log('User UID:', currentUser.uid);
           q = query(
             collection(db, 'analyses'),
             where('projectId', '==', selectedProjectId)
           );
         } else {
           console.log('Fetching analyses for current user only');
+          console.log('User UID:', currentUser.uid);
           q = query(
             collection(db, 'analyses'),
             where('userId', '==', currentUser.uid)
@@ -346,7 +348,7 @@ const Analysis = () => {
           querySnapshot.docs.map(async (snap) => {
             const data = snap.data() as any;
             
-            console.log('Fetched analysis doc:', snap.id, 'Mode:', data.analysisMode, 'Has annotatedImageUrl:', !!data.annotatedImageUrl);
+            console.log('Fetched analysis doc:', snap.id, 'Mode:', data.analysisMode, 'ProjectId:', data.projectId, 'Has annotatedImageUrl:', !!data.annotatedImageUrl);
 
             // Prefer explicit fields if present
             const storedUrl: string | undefined = data.downloadURL || data.imageUrl;
