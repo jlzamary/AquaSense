@@ -123,8 +123,41 @@ These results demonstrate that the model effectively identifies and localizes mu
 ---
 
 ### Frontend Interface & Backend Infrastructure
-[The API methods text I provided]
-[UI design, integration, user experience]
+Frontend
+
+The frontend handles user authentication, routing, and API requests.
+It uses Firebase for authentication, Chakra UI for styling, and Vercel for deployment.
+
+Tech Stack: React (Vite), Chakra UI, Firebase, Axios, Vercel
+
+Environment Variables:
+The frontend requires Firebase configuration and an API base URL pointing to the backend (for example: VITE_API_BASE_URL=https://aquasense-api.onrender.com).
+
+Development:
+Run npm install and npm run dev to start the local server on http://localhost:5173.
+
+Deployment:
+The frontend is deployed on Vercel. Add all environment variables under Project Settings → Environment Variables.
+New commits to the main branch automatically trigger redeployment.
+
+Backend
+
+The backend provides the API layer for model inference and data processing.
+It uses FastAPI and Uvicorn, and is deployed on Render.
+
+Tech Stack: FastAPI, Python 3.11+, Uvicorn, Pydantic, TensorFlow or PyTorch, Render
+
+Environment Variables:
+Define variables such as MODEL_PATH and ALLOWED_ORIGINS for CORS configuration.
+Example:
+ALLOWED_ORIGINS=https://www.aquasense.space,https://aquasense.space,http://localhost:5173
+
+Development:
+Install dependencies with pip install -r requirements.txt and run uvicorn app.main:app --reload locally on http://localhost:8000.
+
+Deployment:
+The backend is hosted on Render. Set the build command to pip install -r requirements.txt
+and the start command to uvicorn app.main:app --host 0.0.0.0 --port 10000.
 
 ---
 
@@ -163,13 +196,6 @@ The AquaSense API was built using **FastAPI** (Python 3.13), a modern web framew
 - Health check endpoint for deployment verification
 
 The API enables rapid analysis of benthic survey imagery, processing individual requests in under 3 seconds and supporting real-world marine research workflows.
-
----
-
-## 💻 Application Demo
-<div>
-  <p>This is the application demo section</p>
-</div>
 
 ---
 
