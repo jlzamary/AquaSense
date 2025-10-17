@@ -211,6 +211,9 @@ const Analysis = () => {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const imagePlaceholderBg = useColorModeValue('gray.100', 'gray.700');
   const imagePlaceholderIconColor = useColorModeValue('gray.400', 'gray.500');
+  const dropzoneBorderColor = useColorModeValue('gray.300', 'gray.600');
+  const dropzoneBg = useColorModeValue('white', 'gray.700');
+  const dropzoneActiveBg = useColorModeValue('brand.50', 'rgba(0, 128, 230, 0.1)');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => {
@@ -845,11 +848,11 @@ const Analysis = () => {
           {...getRootProps()}
           borderWidth={2}
           borderStyle="dashed"
-          borderColor={isDragActive ? 'brand.400' : 'gray.300'}
+          borderColor={isDragActive ? 'brand.400' : dropzoneBorderColor}
           borderRadius="lg"
           p={10}
           textAlign="center"
-          bg={isDragActive ? 'brand.50' : 'transparent'}
+          bg={isDragActive ? dropzoneActiveBg : dropzoneBg}
           cursor="pointer"
           transition="all 0.2s"
           _hover={{ borderColor: 'brand.300' }}

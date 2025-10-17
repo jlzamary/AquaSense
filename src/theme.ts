@@ -1,6 +1,10 @@
 import { extendTheme } from '@chakra-ui/react';
 
 const theme = extendTheme({
+  config: {
+    initialColorMode: 'dark',
+    useSystemColorMode: true,
+  },
   colors: {
     brand: {
       50: '#e6f7ff',
@@ -142,7 +146,7 @@ const theme = extendTheme({
     },
     Tabs: {
       variants: {
-        enclosed: {
+        enclosed: (props: any) => ({
           tab: {
             _selected: {
               color: 'brand.600',
@@ -150,9 +154,14 @@ const theme = extendTheme({
               borderTopColor: 'brand.500',
               borderTopWidth: '2px',
               marginTop: '-1px',
+              bg: props.colorMode === 'dark' ? 'gray.800' : 'white',
             },
           },
-        },
+          tabpanel: {
+            bg: props.colorMode === 'dark' ? 'gray.800' : 'white',
+            borderColor: props.colorMode === 'dark' ? 'gray.700' : 'gray.200',
+          },
+        }),
       },
     },
     Modal: {
