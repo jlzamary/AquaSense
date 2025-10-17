@@ -122,8 +122,9 @@ These results demonstrate that the model effectively identifies and localizes mu
 
 ---
 
-### Backend Infrastructure
+### Frontend Interface & Backend Infrastructure
 [The API methods text I provided]
+[UI design, integration, user experience]
 
 ---
 
@@ -162,11 +163,6 @@ The AquaSense API was built using **FastAPI** (Python 3.13), a modern web framew
 - Health check endpoint for deployment verification
 
 The API enables rapid analysis of benthic survey imagery, processing individual requests in under 3 seconds and supporting real-world marine research workflows.
-
----
-
-### Frontend Interface
-[UI design, integration, user experience]
 
 ---
 
