@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 from PIL import Image
 import io
+import os
 import cv2
 import base64
 from ultralytics import YOLO
@@ -27,14 +28,6 @@ app = FastAPI(
     description="API for classifying marine species (W&M Case-a-Thon '25)",
     version=settings.VERSION
 )
-
-origins = [
-    "https://www.aquasense.space",
-    "https://aquasense.space",
-    "http://localhost:5173",  # for local dev if using Vite/React
-    "http://localhost:8000",  # for plain html server dev
-    # add any other dev domains you use
-]
 
 # CORS middleware
 app.add_middleware(
@@ -111,6 +104,15 @@ async def predict_single(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Prediction error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info(f"Server starting on port {os.getenv('PORT', '8000')}")
+    logger.info("Application ready to accept connections")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Server shutting down")
 
 
 @app.post("/detect")
