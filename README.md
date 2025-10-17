@@ -22,29 +22,29 @@ For more information about our project, methods, and team members, please refer 
 
 ### The Challenge
 
-Marine biologists and environmental researchers spend countless hours manually analyzing underwater imagery to identify and catalog benthic species—the organisms living on or near the ocean floor. This labor-intensive process creates significant bottlenecks in marine research, limiting the scale and speed of ecological surveys critical for understanding ocean health and biodiversity.
+Marine biologists and environmental researchers spend countless hours manually analyzing underwater imagery to identify and catalog benthic species, the organisms living on or near the ocean floor. Our full-stack application reduces bottlenecks and increases marine research efficiency. 
 
 ### Our Solution
 
-**AquaSense AI** is a comprehensive web application that harnesses the power of artificial intelligence to revolutionize benthic species analysis. Built for researchers, marine biologists, and environmental organizations, AquaSense automates what once took hours into a process that takes mere seconds.
+**AquaSense AI** is a comprehensive web application that harnesses the power of artificial intelligence and a comprehensive machine learning pipeline to revolutionize benthic species analysis. Built for researchers, marine biologists, environmental organizations, and students, AquaSense automates what once took hours into a process that takes mere seconds.
 
 ### Key Features
 
-🔍 **Dual-Mode Analysis**
-- **Single Species Classification**: Upload an image and instantly identify one of 7 benthic species with 86.9% accuracy
+**Dual-Mode Analysis**
+- **Single Species Classification**: Upload an image and instantly identify one of 7 benthic species with over 86% accuracy
 - **Multi-Species Detection**: Detect and localize multiple organisms in a single image with 89.1% mAP, complete with bounding boxes and confidence scores
 
-📊 **Project Management Dashboard**
+**Project Management Dashboard**
 - Organize your marine surveys into collaborative projects
 - Track analysis history and metrics over time
 - Share findings with team members in real-time
 
-📈 **Advanced Analytics**
+**Advanced Analytics**
 - View comprehensive statistics on species distribution
 - Export data for further research and reporting
 - Visualize trends across multiple surveys
 
-🔐 **Secure & Collaborative**
+**Secure & Collaborative**
 - Firebase authentication with email verification
 - Role-based access control for team collaboration
 - Cloud storage for seamless data persistence
