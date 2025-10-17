@@ -4,6 +4,7 @@ from torchvision import transforms
 from PIL import Image
 import io
 
+# Load ML model for species prediction
 def load_model(checkpoint_path):
     from torchvision.models import resnet50
     model = resnet50(weights=None)

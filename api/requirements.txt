@@ -5,3 +5,5 @@ torchvision
 pillow
 python-multipart
 pydantic-settings
+ultralytics
+opencv-python

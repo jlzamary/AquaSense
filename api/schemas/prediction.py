@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 from typing import Optional, Dict
 
+# Output can be changed depending on the 'about' section for display information 
 class SpeciesInfo(BaseModel):
     description: str
     habitat: str
