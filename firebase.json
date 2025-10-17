@@ -16,6 +16,9 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
   }
 }
 
