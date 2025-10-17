@@ -1,4 +1,4 @@
-![aquasensecover](readme_photos/AquaSenseCover.png)
+![aquasensecover](readme_photos/AquaBanner.png)
 
 ---
 # 🌐 AquaSense AI
