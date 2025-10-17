@@ -1,4 +1,5 @@
 ## File Metadata and Process Information 
-pretrained_cnn.py: uses a pretrained convolutional neural network (resnet50) as backbone than modifies output through the use a dense layer to get desired output. Parameters in the pretrained model don't get trained until after 5th epoch. This is used for task #1
-preprocessing_w_ViT.py: Our vision transformer model(manually trained), it did not achieve above 0.6 validation accuracy
-preprocessing_w_cnn.py: Our manually trained covulitional nueral network model, took too long to converge for us to reasonably run
+pretrained_cnn.py: Uses a pretrained convolutional neural network (resnet50) as backbone than modifies output through the use a dense layer to get desired output. Parameters in the pretrained model don't get trained until after 5th epoch. This is used for task #1
+load_checkpoint.py, Evaluate_model.ipynb: Files that I use to evaluate my model for task 1.
+new_best.pt: Stores the weights from the epoch with the best precision and recall from my yolov8.n model.
+
