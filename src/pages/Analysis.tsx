@@ -53,6 +53,17 @@ import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, de
 import { storage, db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 
+interface Detection {
+  species: string;
+  probability: number;
+  bbox: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  };
+}
+
 interface Prediction {
   species: string;
   bbox?: {
@@ -61,6 +72,8 @@ interface Prediction {
     x2: number;
     y2: number;
   };
+  detections?: Detection[]; // For detect mode - multiple species with bounding boxes
+  annotatedImageUrl?: string; // For detect mode - image with drawn bounding boxes
 }
 
 interface UploadedFile extends File {
@@ -83,6 +96,9 @@ interface Analysis {
   userId: string;
   location?: string;
   notes?: string;
+  analysisMode?: 'predict' | 'detect'; // Track which mode was used
+  detections?: Detection[]; // For detect mode results
+  annotatedImageUrl?: string; // For detect mode - image with bounding boxes
 }
 
 interface Project {
@@ -94,15 +110,22 @@ interface Project {
   createdAt: Timestamp;
 }
 
-// Mock function to simulate API call to your FastAPI backend
-const analyzeImage = async (file: File): Promise<Prediction> => {
+// API function to analyze images with predict or detect mode
+const analyzeImage = async (file: File, mode: 'predict' | 'detect' = 'predict'): Promise<Prediction> => {
   try {
     // Create FormData to send the actual file
     const formData = new FormData();
     formData.append('file', file);
 
+    // Choose endpoint based on mode
+    const endpoint = mode === 'detect' 
+      ? 'https://aquasense-api.onrender.com/detect'
+      : 'https://aquasense-api.onrender.com/predict';
+
+    console.log(`Calling ${mode} endpoint:`, endpoint);
+
     // Call the AquaSense API endpoint
-    const response = await fetch('https://aquasense-api.onrender.com/predict', {
+    const response = await fetch(endpoint, {
       method: 'POST',
       body: formData // Don't set Content-Type header - browser will set it with boundary
     });
@@ -116,16 +139,22 @@ const analyzeImage = async (file: File): Promise<Prediction> => {
     const data = await response.json();
     console.log('API response:', data);
     
-    // Transform the API response to match our Prediction interface
-    return {
-      species: data.predicted_species || data.species || data.class_name || 'Unknown',
-      bbox: data.bbox || data.bounding_box || {
-        x1: 0,
-        y1: 0,
-        x2: 1,
-        y2: 1
-      }
-    };
+    if (mode === 'detect') {
+      // Detect mode returns multiple detections with bounding boxes and an annotated image
+      return {
+        species: data.detections && data.detections.length > 0 
+          ? data.detections.map((d: Detection) => d.species).join(', ') 
+          : 'No species detected',
+        detections: data.detections || [],
+        annotatedImageUrl: data.annotated_image_url || data.annotatedImageUrl || ''
+      };
+    } else {
+      // Predict mode returns single species prediction
+      return {
+        species: data.predicted_species || data.species || data.class_name || 'Unknown',
+        bbox: data.bbox || data.bounding_box
+      };
+    }
   } catch (error) {
     console.error('Error calling AquaSense API:', error);
     throw new Error('Failed to analyze image. Please try again.');
@@ -149,6 +178,7 @@ const Analysis = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<'predict' | 'detect'>('predict');
   
   // History state
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
@@ -514,7 +544,7 @@ const Analysis = () => {
         try {
           const result = successfulUploads[index];
           console.log('Processing upload result:', result); // Debug log
-          const prediction = await analyzeImage(file);
+          const prediction = await analyzeImage(file, analysisMode);
           
           // Validate required data before saving
           if (!result.storagePath || !result.downloadURL) {
@@ -522,17 +552,27 @@ const Analysis = () => {
             throw new Error('Missing required data for analysis');
           }
 
-          console.log('Saving analysis with:', { storagePath: result.storagePath, downloadURL: result.downloadURL });
+          console.log('Saving analysis with:', { storagePath: result.storagePath, downloadURL: result.downloadURL, mode: analysisMode });
           
-          await addDoc(collection(db, 'analyses'), {
+          const analysisData: any = {
             userId: currentUser.uid,
             projectId: selectedProjectId || '',
             storagePath: result.storagePath,
             imageUrl: result.downloadURL,
             species: prediction.species,
             timestamp: serverTimestamp(),
-            bbox: prediction.bbox
-          });
+            analysisMode: analysisMode,
+          };
+          
+          // Add mode-specific data
+          if (analysisMode === 'detect') {
+            analysisData.detections = prediction.detections || [];
+            analysisData.annotatedImageUrl = prediction.annotatedImageUrl || '';
+          } else {
+            analysisData.bbox = prediction.bbox;
+          }
+          
+          await addDoc(collection(db, 'analyses'), analysisData);
           
           setFiles(prevFiles => {
             const newFiles = [...prevFiles];
@@ -719,6 +759,31 @@ const Analysis = () => {
             {/* Upload & Analyze Panel */}
             <TabPanel p={0} pt={6}>
               <VStack spacing={6}>
+                {/* Analysis Mode Selection */}
+                <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+                  <CardBody>
+                    <HStack spacing={4} align="start">
+                      <Icon as={FaImage} boxSize={5} color="brand.500" mt={2} />
+                      <Box flex={1}>
+                        <Text fontWeight="medium" mb={2}>Analysis Mode</Text>
+                        <Select
+                          value={analysisMode}
+                          onChange={(e) => setAnalysisMode(e.target.value as 'predict' | 'detect')}
+                        >
+                          <option value="predict">Predict - Single species identification</option>
+                          <option value="detect">Detect - Multiple species with bounding boxes</option>
+                        </Select>
+                        <Text fontSize="sm" color="gray.500" mt={2}>
+                          {analysisMode === 'predict' 
+                            ? 'Identifies the primary species in the image'
+                            : 'Detects multiple species and returns an image with bounding boxes'
+                          }
+                        </Text>
+                      </Box>
+                    </HStack>
+                  </CardBody>
+                </Card>
+
                 {/* Dropzone */}
                 <Box w="100%">
                   <Box
@@ -882,8 +947,24 @@ const Analysis = () => {
                                 >
                                   {file.prediction.species}
                                 </Badge>
-                                <Text fontSize="xs" color="gray.500">
-                                </Text>
+                                {file.prediction.detections && file.prediction.detections.length > 0 && (
+                                  <Text fontSize="xs" color="gray.600" fontWeight="medium">
+                                    {file.prediction.detections.length} detection{file.prediction.detections.length > 1 ? 's' : ''}
+                                  </Text>
+                                )}
+                                {file.prediction.annotatedImageUrl && (
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    colorScheme="brand"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openImagePreview(file.prediction!.annotatedImageUrl!);
+                                    }}
+                                  >
+                                    View Detections
+                                  </Button>
+                                )}
                               </VStack>
                             )}
                           </CardBody>
@@ -1077,8 +1158,41 @@ const Analysis = () => {
                                 colorScheme={getSpeciesBadgeColor(analysis.species)}
                                 fontSize="sm"
                               >
+                                {analysis.analysisMode === 'detect' ? 'Detect' : 'Predict'}
                               </Badge>
                             </Flex>
+
+                            {analysis.detections && analysis.detections.length > 0 && (
+                              <Box>
+                                <Text fontSize="sm" fontWeight="medium" mb={1}>Detections ({analysis.detections.length}):</Text>
+                                <VStack align="stretch" spacing={1}>
+                                  {analysis.detections.slice(0, 3).map((detection, idx) => (
+                                    <HStack key={idx} justify="space-between" fontSize="xs">
+                                      <Text>{detection.species}</Text>
+                                      <Badge colorScheme="green" fontSize="0.6rem">
+                                        {(detection.probability * 100).toFixed(0)}%
+                                      </Badge>
+                                    </HStack>
+                                  ))}
+                                  {analysis.detections.length > 3 && (
+                                    <Text fontSize="xs" color="gray.500">
+                                      +{analysis.detections.length - 3} more
+                                    </Text>
+                                  )}
+                                </VStack>
+                              </Box>
+                            )}
+
+                            {analysis.annotatedImageUrl && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                colorScheme="brand"
+                                onClick={() => openImagePreview(analysis.annotatedImageUrl!)}
+                              >
+                                View Annotated Image
+                              </Button>
+                            )}
 
                             <Text fontSize="sm" color="gray.500">
                               Project: {projects.find(p => p.id === analysis.projectId)?.name || 'None'}
