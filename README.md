@@ -27,7 +27,7 @@ For more information about our project, methods, and team members, please refer 
 
 ## 🚀 Methods
 ### Machine Learning & Model Development
-## 🧠 Task 1: Species Classification
+## Task 1: Species Classification
 
 For the **species classification** task, several model architectures and training strategies were explored.
 
@@ -41,6 +41,7 @@ Training Strategy:
 
 **Result:**  
 ![ml1](readme_photos/output.png)
+
 Final accuracy: **~86%**  
 This approach significantly improved convergence speed and overall classification performance.
 
