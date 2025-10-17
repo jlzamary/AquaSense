@@ -1,0 +1,379 @@
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Button,
+  Card,
+  CardBody,
+  Container,
+  Heading,
+  Text,
+  VStack,
+  HStack,
+  SimpleGrid,
+  useToast,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  FormControl,
+  FormLabel,
+  Input,
+  Textarea,
+  Icon,
+  Badge,
+  useColorModeValue,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+} from '@chakra-ui/react';
+import { FaPlus, FaFolder, FaEllipsisV, FaEdit, FaTrash, FaImage } from 'react-icons/fa';
+import { Link as RouterLink } from 'react-router-dom';
+import { collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { useAuth } from '../contexts/AuthContext';
+
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  userId: string;
+  createdAt: Timestamp;
+  analysisCount?: number;
+}
+
+const Projects = () => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { currentUser } = useAuth();
+  const toast = useToast();
+  
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  useEffect(() => {
+    fetchProjects();
+  }, [currentUser]);
+
+  const fetchProjects = async () => {
+    if (!currentUser) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const q = query(
+        collection(db, 'projects'),
+        where('userId', '==', currentUser.uid)
+      );
+      const querySnapshot = await getDocs(q);
+      const projectsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Project));
+
+      // Get analysis count for each project
+      const projectsWithCounts = await Promise.all(
+        projectsData.map(async (project) => {
+          const analysesQuery = query(
+            collection(db, 'analyses'),
+            where('projectId', '==', project.id)
+          );
+          const analysesSnapshot = await getDocs(analysesQuery);
+          return {
+            ...project,
+            analysisCount: analysesSnapshot.size
+          };
+        })
+      );
+
+      setProjects(projectsWithCounts);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load projects.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateProject = async () => {
+    if (!currentUser || !projectName.trim()) return;
+
+    try {
+      await addDoc(collection(db, 'projects'), {
+        name: projectName,
+        description: projectDescription,
+        userId: currentUser.uid,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({
+        title: 'Project Created',
+        description: `"${projectName}" has been created successfully.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      setProjectName('');
+      setProjectDescription('');
+      onClose();
+      fetchProjects();
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not create project.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleUpdateProject = async () => {
+    if (!editingProject || !projectName.trim()) return;
+
+    try {
+      const projectRef = doc(db, 'projects', editingProject.id);
+      await updateDoc(projectRef, {
+        name: projectName,
+        description: projectDescription,
+      });
+
+      toast({
+        title: 'Project Updated',
+        description: 'Project has been updated successfully.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      setProjectName('');
+      setProjectDescription('');
+      setEditingProject(null);
+      onClose();
+      fetchProjects();
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not update project.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${projectName}"? This will not delete associated analyses.`)) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'projects', projectId));
+      
+      toast({
+        title: 'Project Deleted',
+        description: 'Project has been deleted successfully.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      fetchProjects();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not delete project.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const openEditModal = (project: Project) => {
+    setEditingProject(project);
+    setProjectName(project.name);
+    setProjectDescription(project.description);
+    onOpen();
+  };
+
+  const openCreateModal = () => {
+    setEditingProject(null);
+    setProjectName('');
+    setProjectDescription('');
+    onOpen();
+  };
+
+  return (
+    <Container maxW="container.xl" py={8}>
+      <VStack spacing={8} align="stretch">
+        <HStack justify="space-between">
+          <Box>
+            <Heading size="xl" mb={2}>Research Projects</Heading>
+            <Text color="gray.500">
+              Organize your analyses into projects for better management
+            </Text>
+          </Box>
+          <Button
+            leftIcon={<FaPlus />}
+            colorScheme="brand"
+            onClick={openCreateModal}
+          >
+            New Project
+          </Button>
+        </HStack>
+
+        {isLoading ? (
+          <Text>Loading projects...</Text>
+        ) : projects.length === 0 ? (
+          <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+            <CardBody textAlign="center" py={12}>
+              <Icon as={FaFolder} boxSize={12} color="gray.400" mb={4} />
+              <Heading size="md" mb={2}>No Projects Yet</Heading>
+              <Text color="gray.500" mb={4}>
+                Create your first project to start organizing your analyses
+              </Text>
+              <Button
+                leftIcon={<FaPlus />}
+                colorScheme="brand"
+                onClick={openCreateModal}
+              >
+                Create Project
+              </Button>
+            </CardBody>
+          </Card>
+        ) : (
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+            {projects.map((project) => (
+              <Card
+                key={project.id}
+                bg={cardBg}
+                borderWidth="1px"
+                borderColor={borderColor}
+                _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }}
+                transition="all 0.2s"
+              >
+                <CardBody>
+                  <HStack justify="space-between" mb={3}>
+                    <Icon as={FaFolder} boxSize={6} color="brand.500" />
+                    <Menu>
+                      <MenuButton
+                        as={IconButton}
+                        icon={<FaEllipsisV />}
+                        variant="ghost"
+                        size="sm"
+                      />
+                      <MenuList>
+                        <MenuItem icon={<FaEdit />} onClick={() => openEditModal(project)}>
+                          Edit
+                        </MenuItem>
+                        <MenuItem
+                          icon={<FaTrash />}
+                          onClick={() => handleDeleteProject(project.id, project.name)}
+                          color="red.500"
+                        >
+                          Delete
+                        </MenuItem>
+                      </MenuList>
+                    </Menu>
+                  </HStack>
+
+                  <Heading size="md" mb={2} noOfLines={1}>
+                    {project.name}
+                  </Heading>
+                  
+                  <Text fontSize="sm" color="gray.500" mb={4} noOfLines={2} minH="40px">
+                    {project.description || 'No description'}
+                  </Text>
+
+                  <HStack spacing={4} mb={4}>
+                    <Badge colorScheme="blue" display="flex" alignItems="center" gap={1}>
+                      <Icon as={FaImage} boxSize={3} />
+                      {project.analysisCount || 0} analyses
+                    </Badge>
+                  </HStack>
+
+                  <Button
+                    as={RouterLink}
+                    to={`/analysis?project=${project.id}`}
+                    colorScheme="brand"
+                    size="sm"
+                    w="full"
+                  >
+                    Upload Images
+                  </Button>
+                </CardBody>
+              </Card>
+            ))}
+          </SimpleGrid>
+        )}
+      </VStack>
+
+      {/* Create/Edit Project Modal */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            {editingProject ? 'Edit Project' : 'Create New Project'}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4}>
+              <FormControl isRequired>
+                <FormLabel>Project Name</FormLabel>
+                <Input
+                  placeholder="e.g., North Atlantic Survey 2025"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Description</FormLabel>
+                <Textarea
+                  placeholder="Brief description of the project..."
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  rows={4}
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="brand"
+              onClick={editingProject ? handleUpdateProject : handleCreateProject}
+              isDisabled={!projectName.trim()}
+            >
+              {editingProject ? 'Update' : 'Create'}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Container>
+  );
+};
+
+export default Projects;

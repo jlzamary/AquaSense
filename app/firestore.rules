@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection - for email lookup and member management
+    match /users/{userId} {
+      // Anyone authenticated can read user data (needed for inviting members)
+      allow read: if request.auth != null;
+      
+      // Users can only write their own document
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Projects collection
+    match /projects/{projectId} {
+      // Users can read if they are the owner OR a member
+      allow read: if request.auth != null && 
+                    (resource.data.ownerId == request.auth.uid || 
+                     request.auth.uid in resource.data.members);
+      
+      // Users can create new projects (must set themselves as owner)
+      allow create: if request.auth != null && 
+                      request.resource.data.ownerId == request.auth.uid;
+      
+      // Only the owner can update or delete
+      allow update, delete: if request.auth != null && 
+                              resource.data.ownerId == request.auth.uid;
+    }
+    
+    // Analyses collection - CRITICAL for shared project viewing
+    match /analyses/{analysisId} {
+      // Users can read analyses if they have access to the project
+      // This allows collaborators to see each other's images
+      allow read: if request.auth != null && 
+                    (
+                      // User owns the analysis
+                      resource.data.userId == request.auth.uid ||
+                      // OR user has access to the project (owner or member)
+                      (
+                        exists(/databases/$(database)/documents/projects/$(resource.data.projectId)) &&
+                        (
+                          get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid ||
+                          request.auth.uid in get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.members
+                        )
+                      )
+                    );
+      
+      // Users can create analyses if they have access to the project
+      allow create: if request.auth != null && 
+                      request.resource.data.userId == request.auth.uid &&
+                      (
+                        // Project doesn't exist yet (empty projectId) OR
+                        request.resource.data.projectId == '' ||
+                        // User has access to the project
+                        (
+                          exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId)) &&
+                          (
+                            get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.ownerId == request.auth.uid ||
+                            request.auth.uid in get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.members
+                          )
+                        )
+                      );
+      
+      // Users can update/delete only their own analyses
+      allow update, delete: if request.auth != null && 
+                              resource.data.userId == request.auth.uid;
+    }
+  }
+}
+
