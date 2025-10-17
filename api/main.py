@@ -28,6 +28,14 @@ app = FastAPI(
     version=settings.VERSION
 )
 
+origins = [
+    "https://www.aquasense.space",
+    "https://aquasense.space",
+    "http://localhost:5173",  # for local dev if using Vite/React
+    "http://localhost:8000",  # for plain html server dev
+    # add any other dev domains you use
+]
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
