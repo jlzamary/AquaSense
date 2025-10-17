@@ -583,7 +583,10 @@ const Analysis = () => {
             console.log('Detect mode - saving annotatedImageUrl:', analysisData.annotatedImageUrl);
             console.log('Detect mode - saving detections:', analysisData.detections);
           } else {
-            analysisData.bbox = prediction.bbox;
+            // Only add bbox if it exists (Firestore doesn't allow undefined)
+            if (prediction.bbox) {
+              analysisData.bbox = prediction.bbox;
+            }
           }
           
           console.log('Final analysis data to save:', analysisData);
