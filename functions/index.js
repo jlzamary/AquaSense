@@ -10,7 +10,7 @@ admin.initializeApp();
 
 // Initialize SendGrid - API key should be set via environment variables
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@aquasense.app";
+const FROM_EMAIL = process.env.FROM_EMAIL || "no-reply@aquasense.space";
 const FROM_NAME = process.env.FROM_NAME || "AquaSense Team";
 const APP_URL = "https://aqua-sense-final.vercel.app";
 
