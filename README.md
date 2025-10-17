@@ -39,10 +39,12 @@ Training Strategy:
 - The pretrained layers were **frozen for the first 5 epochs**, allowing the classifier head to stabilize.  
 - The **entire model** was then fine-tuned for several additional epochs.  
 
-**Result:**  
-![ml1](readme_photos/output.png)
+**Result:**
+<p align="center">
+  <img src="readme_photos/output.png" alt="Confusion Matrix" width="45%">
+</p>
 
-Final accuracy: **~86%**  
+Final accuracy: **86.9%**  
 This approach significantly improved convergence speed and overall classification performance.
 
 ---
@@ -55,6 +57,9 @@ For the **object detection** task, the **YOLOv8n** model from the Ultralytics YO
 - To further enhance detection accuracy, **data augmentation** techniques were introduced and the **input image size** was increased to improve feature resolution.  
 
 **Result:**  
+<p align="center">
+  <img src="readme_photos/BoxPR_curve.png" alt="PR Curve" width="45%">
+</p>
 - **Precision:** 84%  
 - **Recall:** 85%  
 - **mAP@0.50:** 89%  
