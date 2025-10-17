@@ -1,5 +1,6 @@
 const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/v2/firestore");
 const {setGlobalOptions} = require("firebase-functions/v2");
+const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const sgMail = require("@sendgrid/mail");
 
@@ -8,22 +9,23 @@ setGlobalOptions({maxInstances: 10});
 
 admin.initializeApp();
 
-// Initialize SendGrid - API key should be set via environment variables
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || "no-reply@aquasense.space";
-const FROM_NAME = process.env.FROM_NAME || "AquaSense Team";
-const APP_URL = "https://aqua-sense-final.vercel.app";
+// Define secrets for sensitive data
+const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
 
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
-} else {
-  console.warn("SENDGRID_API_KEY not set - emails will not be sent");
-}
+// Initialize SendGrid configuration
+const FROM_EMAIL = "no-reply@aquasense.space";
+const FROM_NAME = "AquaSense Team";
+const APP_URL = "https://aqua-sense-final.vercel.app";
 
 /**
  * Send welcome email when a new user is created in the users collection
  */
-exports.sendWelcomeEmail = onDocumentCreated("users/{userId}", async (event) => {
+exports.sendWelcomeEmail = onDocumentCreated(
+    {document: "users/{userId}", secrets: [sendgridApiKey]},
+    async (event) => {
+      // Initialize SendGrid with the secret key
+      sgMail.setApiKey(sendgridApiKey.value());
+      
       const snap = event.data;
       if (!snap) {
         console.log("No data associated with the event");
@@ -132,7 +134,12 @@ The AquaSense Team`,
 /**
  * Send notification when a user is added to a project's members array
  */
-exports.sendProjectInvitationEmail = onDocumentUpdated("projects/{projectId}", async (event) => {
+exports.sendProjectInvitationEmail = onDocumentUpdated(
+    {document: "projects/{projectId}", secrets: [sendgridApiKey]},
+    async (event) => {
+      // Initialize SendGrid with the secret key
+      sgMail.setApiKey(sendgridApiKey.value());
+      
       const change = event.data;
       if (!change) {
         console.log("No data associated with the event");
