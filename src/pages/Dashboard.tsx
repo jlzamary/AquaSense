@@ -32,7 +32,6 @@ import {
   EditableInput,
   EditableTextarea,
   EditablePreview,
-  Tooltip,
   Input,
   Textarea,
   FormControl,
