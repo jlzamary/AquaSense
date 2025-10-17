@@ -216,6 +216,18 @@ const Analysis = () => {
   const dropzoneActiveBg = useColorModeValue('brand.50', 'rgba(0, 128, 230, 0.1)');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    // Check if a project is selected
+    if (!selectedProjectId) {
+      toast({
+        title: 'Project Required',
+        description: 'Please select a project before uploading images. You can create a new project from the Dashboard.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
     const newFiles = acceptedFiles.map(file => {
       // Create an object that properly includes the File and our custom properties
       const uploadedFile = Object.assign(file, {
@@ -229,7 +241,7 @@ const Analysis = () => {
     });
     
     setFiles(prevFiles => [...prevFiles, ...newFiles]);
-  }, []);
+  }, [selectedProjectId, toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -242,6 +254,22 @@ const Analysis = () => {
 
   // Camera capture handler
   const handleCameraCapture = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    // Check if a project is selected
+    if (!selectedProjectId) {
+      toast({
+        title: 'Project Required',
+        description: 'Please select a project before uploading images. You can create a new project from the Dashboard.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      // Reset the input
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
+      }
+      return;
+    }
+
     const capturedFiles = event.target.files;
     if (capturedFiles && capturedFiles.length > 0) {
       const filesArray = Array.from(capturedFiles);
@@ -263,7 +291,7 @@ const Analysis = () => {
         cameraInputRef.current.value = '';
       }
     }
-  }, []);
+  }, [selectedProjectId, toast]);
 
   const openCamera = () => {
     cameraInputRef.current?.click();
@@ -781,11 +809,14 @@ const Analysis = () => {
             <HStack spacing={4} align="start">
               <Icon as={FaFolder} boxSize={5} color="brand.500" mt={2} />
               <Box flex={1}>
-                <Text fontWeight="medium" mb={2}>Select Project</Text>
+                <Text fontWeight="medium" mb={2}>
+                  Select Project <Text as="span" color="red.500">*</Text>
+                </Text>
                 <Select
-                  placeholder="All Projects"
+                  placeholder="Choose a project to upload images"
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
+                  borderColor={!selectedProjectId ? 'orange.400' : undefined}
                 >
                   {projects.map((project) => (
                     <option key={project.id} value={project.id}>
@@ -793,11 +824,16 @@ const Analysis = () => {
                     </option>
                   ))}
                 </Select>
+                {!selectedProjectId && projects.length > 0 && (
+                  <Text fontSize="xs" color="orange.500" mt={1}>
+                    Please select a project before uploading images
+                  </Text>
+                )}
                 {projects.length === 0 && (
-                  <Alert status="info" mt={2} borderRadius="md">
+                  <Alert status="warning" mt={2} borderRadius="md">
                     <AlertIcon />
                     <Text fontSize="sm">
-                      No projects yet. Create a project in the Dashboard.
+                      No projects yet. Create a project in the Dashboard before uploading images.
                     </Text>
                   </Alert>
                 )}
