@@ -19,9 +19,54 @@ For more information about our project, methods, and team members, please refer 
 - [Meet the Team](#-meet-the-team)
 ---
 ## 🔬 About
-<div>
-  <p>This is the about section</p>
-</div>
+
+### The Challenge
+
+Marine biologists and environmental researchers spend countless hours manually analyzing underwater imagery to identify and catalog benthic species—the organisms living on or near the ocean floor. This labor-intensive process creates significant bottlenecks in marine research, limiting the scale and speed of ecological surveys critical for understanding ocean health and biodiversity.
+
+### Our Solution
+
+**AquaSense AI** is a comprehensive web application that harnesses the power of artificial intelligence to revolutionize benthic species analysis. Built for researchers, marine biologists, and environmental organizations, AquaSense automates what once took hours into a process that takes mere seconds.
+
+### Key Features
+
+🔍 **Dual-Mode Analysis**
+- **Single Species Classification**: Upload an image and instantly identify one of 7 benthic species with 86.9% accuracy
+- **Multi-Species Detection**: Detect and localize multiple organisms in a single image with 89.1% mAP, complete with bounding boxes and confidence scores
+
+📊 **Project Management Dashboard**
+- Organize your marine surveys into collaborative projects
+- Track analysis history and metrics over time
+- Share findings with team members in real-time
+
+📈 **Advanced Analytics**
+- View comprehensive statistics on species distribution
+- Export data for further research and reporting
+- Visualize trends across multiple surveys
+
+🔐 **Secure & Collaborative**
+- Firebase authentication with email verification
+- Role-based access control for team collaboration
+- Cloud storage for seamless data persistence
+
+### Technology Stack
+
+**Frontend**: React + TypeScript + Material-UI + Vite  
+**Backend**: FastAPI (Python 3.13) deployed on Render  
+**ML Models**: PyTorch (ResNet50) + Ultralytics YOLOv8  
+**Database**: Firebase Firestore  
+**Authentication**: Firebase Auth  
+**Hosting**: Vercel (frontend) + Render (API)
+
+### Real-World Impact
+
+AquaSense accelerates marine research by:
+- Reducing analysis time from hours to seconds
+- Enabling larger-scale ecological surveys
+- Standardizing species identification across research teams
+- Making advanced AI tools accessible to researchers worldwide
+
+Whether you're conducting benthic surveys, monitoring ecosystem health, or studying marine biodiversity, AquaSense provides the tools you need to analyze underwater imagery with unprecedented speed and accuracy.
 
 ---
 
