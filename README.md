@@ -1,3 +1,6 @@
+![aquasensecover](readme_photos/AquaSenseCover.png)
+
+---
 # 🌐 AquaSense AI
 
 Welcome to the Team Pharos GitHub repository for the 2025 AI Club Case-a-Thon.
