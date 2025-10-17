@@ -60,10 +60,11 @@ For the **object detection** task, the **YOLOv8n** model from the Ultralytics YO
 <p align="center">
   <img src="readme_photos/BoxPR_curve.png" alt="PR Curve" width="45%">
 </p>
-- **Precision:** 84%  
-- **Recall:** 85%  
-- **mAP@0.50:** 89%  
-- **mAP@[0.50:0.95]:** 62%
+
+- **Precision:** 83.8%  
+- **Recall:** 84.9%  
+- **mAP@0.50:** 89.1%  
+- **mAP@[0.50:0.95]:** 61.9%
 
 These results demonstrate that the model effectively identifies and localizes multiple benthic organism classes with strong detection reliability and spatial accuracy.
 
