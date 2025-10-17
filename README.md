@@ -27,7 +27,45 @@ For more information about our project, methods, and team members, please refer 
 
 ## 🚀 Methods
 ### Machine Learning & Model Development
-[Dataset, training process, model architecture]
+## 🧠 Task 1: Species Classification
+
+For the **species classification** task, several model architectures and training strategies were explored.
+
+- Initially, a **custom CNN**(found in archive) was implemented and trained from scratch. However, the model converged very slowly, and each epoch required significant computation time.  
+- Next, a **Vision Transformer (ViT)**(found in archive) was developed and trained manually. Although the ViT showed promising early results, it began to overfit after multiple epochs, suggesting it was memorizing the training data.  
+- To address these issues, a **transfer learning** approach was adopted using a **pretrained ResNet-50** model as the backbone. A dense linear layer was appended to produce the desired output dimension.  
+
+Training Strategy:
+- The pretrained layers were **frozen for the first 5 epochs**, allowing the classifier head to stabilize.  
+- The **entire model** was then fine-tuned for several additional epochs.  
+
+**Result:**  
+Final accuracy: **~86%**  
+This approach significantly improved convergence speed and overall classification performance.
+
+---
+
+## Task 2: Object Detection
+
+For the **object detection** task, the **YOLOv8n** model from the Ultralytics YOLOv8 framework was used to detect and localize benthic organisms in underwater imagery.
+
+- The model performed well during initial training.  
+- To further enhance detection accuracy, **data augmentation** techniques were introduced and the **input image size** was increased to improve feature resolution.  
+
+**Result:**  
+- **Precision:** 84%  
+- **Recall:** 85%  
+- **mAP@0.50:** 89%  
+- **mAP@[0.50:0.95]:** 62%
+
+These results demonstrate that the model effectively identifies and localizes multiple benthic organism classes with strong detection reliability and spatial accuracy.
+
+---
+
+### Notes
+- Task 1 used **PyTorch** for model training and fine-tuning.  
+- Task 2 was implemented using **Ultralytics YOLOv8**.  
+- Both tasks were trained on local hardware.
 
 ---
 
