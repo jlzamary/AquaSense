@@ -28,3 +28,12 @@ dist-ssr
 .env.*
 !.env.example
 .vercel
+
+# Firebase Functions
+functions/node_modules/
+functions/.runtimeconfig.json
+functions/lib/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
