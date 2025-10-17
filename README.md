@@ -194,6 +194,47 @@ The API enables rapid analysis of benthic survey imagery, processing individual 
     </td>
   </tr>
 </table>
+<p align="center">
+  <a href="GEORGE_LINKEDIN_URL" target="_blank">
+    <img src="https://img.shields.io/badge/George's_LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="George's LinkedIn">
+  </a>
+  <a href="RICKY_LINKEDIN_URL" target="_blank">
+    <img src="https://img.shields.io/badge/Ricky's_LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="Ricky's LinkedIn">
+  </a>
+  <a href="JACK_LINKEDIN_URL" target="_blank">
+    <img src="https://img.shields.io/badge/Jack's_LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="Jack's LinkedIn">
+  </a>
+</p>
 </div>
 
 ---
+
+## 🛠️ Built With
+
+<div align="center">
+
+### Languages & Frameworks
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+
+### Backend & API
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+
+### Frontend Tools
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Material-UI](https://img.shields.io/badge/Material--UI-0081CB?style=for-the-badge&logo=material-ui&logoColor=white)
+![ESLint](https://img.shields.io/badge/ESLint-4B32C3?style=for-the-badge&logo=eslint&logoColor=white)
+![Axios](https://img.shields.io/badge/Axios-5A29E4?style=for-the-badge&logo=axios&logoColor=white)
+
+### Cloud & Database
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
+
+### Development Tools
+![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white)
+![JSON](https://img.shields.io/badge/JSON-000000?style=for-the-badge&logo=json&logoColor=white)
+![Markdown](https://img.shields.io/badge/Markdown-000000?style=for-the-badge&logo=markdown&logoColor=white)
