@@ -47,7 +47,8 @@ interface Project {
   id: string;
   name: string;
   description: string;
-  userId: string;
+  ownerId: string;  // Changed from userId
+  members: string[]; // Array of user UIDs who have access
   createdAt: Timestamp;
 }
 
@@ -101,21 +102,42 @@ const Metrics = () => {
     }
 
     try {
-      const q = query(
+      // Fetch projects owned by the user
+      const ownedQuery = query(
         collection(db, 'projects'),
-        where('userId', '==', currentUser.uid)
+        where('ownerId', '==', currentUser.uid)
       );
-      const querySnapshot = await getDocs(q);
-      const projectsData = querySnapshot.docs.map(doc => ({
+      
+      // Fetch projects where user is a member
+      const sharedQuery = query(
+        collection(db, 'projects'),
+        where('members', 'array-contains', currentUser.uid)
+      );
+      
+      const [ownedSnapshot, sharedSnapshot] = await Promise.all([
+        getDocs(ownedQuery),
+        getDocs(sharedQuery)
+      ]);
+      
+      const ownedProjects = ownedSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
-      } as Project));
-
-      setProjects(projectsData);
+        ...doc.data(),
+      })) as Project[];
+      
+      const sharedProjects = sharedSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Project[];
+      
+      // Combine and sort by createdAt
+      const allProjects = [...ownedProjects, ...sharedProjects]
+        .sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+      
+      setProjects(allProjects);
       
       // Auto-select first project if available
-      if (projectsData.length > 0 && !selectedProject) {
-        setSelectedProject(projectsData[0].id);
+      if (allProjects.length > 0 && !selectedProject) {
+        setSelectedProject(allProjects[0].id);
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -140,11 +162,10 @@ const Metrics = () => {
       const project = projects.find(p => p.id === projectId);
       if (!project) return;
 
-      // Get all analyses for this project
+      // Get all analyses for this project (from all users who have access)
       const analysesQuery = query(
         collection(db, 'analyses'),
-        where('projectId', '==', projectId),
-        where('userId', '==', currentUser.uid)
+        where('projectId', '==', projectId)
       );
       const analysesSnapshot = await getDocs(analysesQuery);
       const analyses = analysesSnapshot.docs.map(doc => ({

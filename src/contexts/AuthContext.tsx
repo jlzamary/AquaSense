@@ -10,7 +10,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
-import { auth } from '../firebase/config';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebase/config';
 
 type User = FirebaseUser | null;
 
@@ -42,6 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName });
+      
+      // Create user document in Firestore for email lookup
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        email: email,
+        displayName: displayName,
+        createdAt: serverTimestamp(),
+      });
+      
       return userCredential;
     } catch (error) {
       console.error('Error signing up:', error);
@@ -61,9 +71,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return firebaseSendPasswordResetEmail(auth, email);
   };
 
-  const signInWithGoogle = () => {
-    const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider);
+  const signInWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      
+      // Create user document if it doesn't exist (for first-time Google users)
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        displayName: userCredential.user.displayName || 'Anonymous',
+        createdAt: serverTimestamp(),
+      }, { merge: true }); // merge: true prevents overwriting existing data
+      
+      return userCredential;
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      throw error;
+    }
   };
 
   useEffect(() => {

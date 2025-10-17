@@ -38,7 +38,7 @@ import {
   FormControl,
   FormLabel
 } from '@chakra-ui/react';
-import { FaUpload, FaChartLine, FaHistory, FaFish, FaFolder, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaUpload, FaChartLine, FaHistory, FaFish, FaFolder, FaPlus, FaTrash, FaUserPlus, FaUsers } from 'react-icons/fa';
 import { Link as RouterLink } from 'react-router-dom';
 import { collection, query, where, getDocs, Timestamp, orderBy, limit, updateDoc, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
@@ -59,8 +59,15 @@ interface Project {
   id: string;
   name: string;
   description: string;
-  userId: string;
+  ownerId: string;  // Changed from userId to ownerId
+  members: string[]; // Array of user UIDs who have access
   createdAt: Timestamp;
+}
+
+interface UserData {
+  uid: string;
+  email: string;
+  displayName: string;
 }
 
 const Dashboard = () => {
@@ -72,8 +79,14 @@ const Dashboard = () => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [memberEmail, setMemberEmail] = useState('');
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [selectedProjectForMembers, setSelectedProjectForMembers] = useState<Project | null>(null);
+  const [projectMembers, setProjectMembers] = useState<UserData[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isAddOpen, onOpen: onAddOpen, onClose: onAddClose } = useDisclosure();
+  const { isOpen: isMemberOpen, onOpen: onMemberOpen, onClose: onMemberClose } = useDisclosure();
   const { currentUser } = useAuth();
   const toast = useToast();
   const cardBg = useColorModeValue('white', 'gray.800');
@@ -88,6 +101,8 @@ const Dashboard = () => {
     { transform: 'translateY(-4px)', shadow: 'lg' },
     { transform: 'translateY(-4px)', shadow: 'dark-lg' }
   );
+  const hoverBg = useColorModeValue('gray.50', 'gray.700');
+  const modalBg = useColorModeValue('gray.50', 'gray.700');
 
   useEffect(() => {
     const fetchRecentAnalyses = async () => {
@@ -258,18 +273,41 @@ const Dashboard = () => {
       }
 
       try {
-        const q = query(
+        // Fetch projects owned by the user
+        const ownedQuery = query(
           collection(db, 'projects'),
-          where('userId', '==', currentUser.uid),
-          orderBy('createdAt', 'desc'),
-          limit(6)
+          where('ownerId', '==', currentUser.uid),
+          orderBy('createdAt', 'desc')
         );
-        const querySnapshot = await getDocs(q);
-        const projectsData = querySnapshot.docs.map(doc => ({
+        
+        // Fetch projects where user is a member
+        const sharedQuery = query(
+          collection(db, 'projects'),
+          where('members', 'array-contains', currentUser.uid),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const [ownedSnapshot, sharedSnapshot] = await Promise.all([
+          getDocs(ownedQuery),
+          getDocs(sharedQuery)
+        ]);
+        
+        const ownedProjects = ownedSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         })) as Project[];
-        setProjects(projectsData);
+        
+        const sharedProjects = sharedSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Project[];
+        
+        // Combine and sort by createdAt, take top 6
+        const allProjects = [...ownedProjects, ...sharedProjects]
+          .sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis())
+          .slice(0, 6);
+        
+        setProjects(allProjects);
       } catch (error) {
         console.error('Error fetching projects:', error);
         toast({
@@ -352,6 +390,189 @@ const Dashboard = () => {
     onDeleteOpen();
   };
 
+  const openMembersModal = async (project: Project) => {
+    setSelectedProjectForMembers(project);
+    setIsLoadingMembers(true);
+    onMemberOpen();
+    
+    try {
+      // Fetch member details
+      if (project.members && project.members.length > 0) {
+        const memberPromises = project.members.map(async (uid) => {
+          const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', uid)));
+          if (!userDoc.empty) {
+            return userDoc.docs[0].data() as UserData;
+          }
+          return null;
+        });
+        
+        const members = (await Promise.all(memberPromises)).filter(Boolean) as UserData[];
+        setProjectMembers(members);
+      } else {
+        setProjectMembers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load project members.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!selectedProjectForMembers || !currentUser || !memberEmail.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid email address.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    // Check if user is the owner
+    if (selectedProjectForMembers.ownerId !== currentUser.uid) {
+      toast({
+        title: 'Error',
+        description: 'Only the project owner can add members.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      setIsAddingMember(true);
+      
+      // Find user by email
+      const userQuery = query(collection(db, 'users'), where('email', '==', memberEmail.trim()));
+      const userSnapshot = await getDocs(userQuery);
+      
+      if (userSnapshot.empty) {
+        toast({
+          title: 'User not found',
+          description: 'No user found with that email address.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      const userData = userSnapshot.docs[0].data() as UserData;
+      
+      // Check if user is already a member
+      if (selectedProjectForMembers.members.includes(userData.uid)) {
+        toast({
+          title: 'Already a member',
+          description: 'This user is already a member of the project.',
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      // Check if user is the owner
+      if (selectedProjectForMembers.ownerId === userData.uid) {
+        toast({
+          title: 'Cannot add owner',
+          description: 'The project owner is automatically included.',
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      // Add member to project
+      const projectRef = doc(db, 'projects', selectedProjectForMembers.id);
+      const updatedMembers = [...selectedProjectForMembers.members, userData.uid];
+      await updateDoc(projectRef, { members: updatedMembers });
+      
+      // Update local state
+      setProjects(prevProjects =>
+        prevProjects.map(p => p.id === selectedProjectForMembers.id ? { ...p, members: updatedMembers } : p)
+      );
+      setSelectedProjectForMembers({ ...selectedProjectForMembers, members: updatedMembers });
+      setProjectMembers([...projectMembers, userData]);
+      setMemberEmail('');
+      
+      toast({
+        title: 'Member added',
+        description: `${userData.displayName} has been added to the project.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error adding member:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add member. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsAddingMember(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberUid: string) => {
+    if (!selectedProjectForMembers || !currentUser) return;
+
+    // Check if user is the owner
+    if (selectedProjectForMembers.ownerId !== currentUser.uid) {
+      toast({
+        title: 'Error',
+        description: 'Only the project owner can remove members.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      const projectRef = doc(db, 'projects', selectedProjectForMembers.id);
+      const updatedMembers = selectedProjectForMembers.members.filter(uid => uid !== memberUid);
+      await updateDoc(projectRef, { members: updatedMembers });
+      
+      // Update local state
+      setProjects(prevProjects =>
+        prevProjects.map(p => p.id === selectedProjectForMembers.id ? { ...p, members: updatedMembers } : p)
+      );
+      setSelectedProjectForMembers({ ...selectedProjectForMembers, members: updatedMembers });
+      setProjectMembers(projectMembers.filter(m => m.uid !== memberUid));
+      
+      toast({
+        title: 'Member removed',
+        description: 'Member has been removed from the project.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error removing member:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove member. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
   const handleCreateProject = async () => {
     if (!currentUser || !newProjectName.trim()) {
       toast({
@@ -369,7 +590,8 @@ const Dashboard = () => {
       const docRef = await addDoc(collection(db, 'projects'), {
         name: newProjectName.trim(),
         description: newProjectDescription.trim() || '',
-        userId: currentUser.uid,
+        ownerId: currentUser.uid,  // Changed from userId
+        members: [],  // Initialize empty members array
         createdAt: serverTimestamp(),
       });
 
@@ -377,7 +599,8 @@ const Dashboard = () => {
         id: docRef.id,
         name: newProjectName.trim(),
         description: newProjectDescription.trim() || '',
-        userId: currentUser.uid,
+        ownerId: currentUser.uid,  // Changed from userId
+        members: [],  // Initialize empty members array
         createdAt: Timestamp.now(),
       };
 
@@ -525,15 +748,15 @@ const Dashboard = () => {
                     >
                       <CardBody>
                         <VStack align="start" spacing={3} w="full">
-                          <HStack w="full" justify="space-between">
-                            <HStack flex="1" minW="0">
+                          <VStack align="stretch" spacing={3} w="full">
+                            <HStack spacing={2}>
                               <Icon as={FaFolder} color="brand.500" boxSize={5} flexShrink={0} />
                               <Editable
                                 defaultValue={project.name}
                                 fontSize="lg"
                                 fontWeight="bold"
                                 color={headingColor}
-                                w="full"
+                                flex="1"
                                 onSubmit={(value) => handleUpdateProject(project.id, 'name', value)}
                               >
                                 <EditablePreview 
@@ -541,25 +764,53 @@ const Dashboard = () => {
                                   px={2}
                                   w="full"
                                   cursor="pointer"
-                                  _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                                  _hover={{ bg: hoverBg }}
                                   borderRadius="md"
                                   noOfLines={1}
                                 />
                                 <EditableInput py={1} px={2} />
                               </Editable>
+                              {project.ownerId !== currentUser?.uid && (
+                                <Badge colorScheme="purple" fontSize="xs" flexShrink={0}>
+                                  Shared
+                                </Badge>
+                              )}
                             </HStack>
-                            <Tooltip label="Delete project">
-                              <IconButton
-                                aria-label="Delete project"
-                                icon={<FaTrash />}
+                            
+                            <HStack spacing={2} justify="flex-end">
+                              <Button
+                                leftIcon={<FaUserPlus />}
                                 size="sm"
-                                variant="ghost"
+                                colorScheme="blue"
+                                onClick={() => {
+                                  console.log('Project data:', project);
+                                  console.log('Current user UID:', currentUser?.uid);
+                                  console.log('Owner check:', project.ownerId === currentUser?.uid);
+                                  openMembersModal(project);
+                                }}
+                              >
+                                Share
+                              </Button>
+                              <Button
+                                leftIcon={<FaTrash />}
+                                size="sm"
                                 colorScheme="red"
                                 onClick={() => openDeleteModal(project)}
-                                flexShrink={0}
-                              />
-                            </Tooltip>
-                          </HStack>
+                              >
+                                Delete
+                              </Button>
+                            </HStack>
+                          </VStack>
+                          
+                          {/* Display members count if project has members */}
+                          {project.members && project.members.length > 0 && (
+                            <HStack fontSize="xs" color={textColor} opacity={0.8}>
+                              <Icon as={FaUsers} boxSize={3} />
+                              <Text>
+                                {project.members.length} member{project.members.length !== 1 ? 's' : ''}
+                              </Text>
+                            </HStack>
+                          )}
                           
                           <Editable
                             defaultValue={project.description || 'No description provided'}
@@ -573,7 +824,7 @@ const Dashboard = () => {
                               px={2}
                               w="full"
                               cursor="pointer"
-                              _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                              _hover={{ bg: hoverBg }}
                               borderRadius="md"
                               noOfLines={2}
                               minH="40px"
@@ -843,6 +1094,122 @@ const Dashboard = () => {
             <Button colorScheme="red" onClick={handleDeleteProject}>
               Delete Project
             </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Member Management Modal */}
+      <Modal isOpen={isMemberOpen} onClose={onMemberClose} size="lg" isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            <HStack>
+              <Icon as={FaUsers} color="brand.500" />
+              <Text>Manage Project Members</Text>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={6} align="stretch">
+              {/* Project Info */}
+              <Box>
+                <Text fontWeight="bold" fontSize="lg" mb={1}>
+                  {selectedProjectForMembers?.name}
+                </Text>
+                <Text fontSize="sm" color={textColor}>
+                  {selectedProjectForMembers?.description || 'No description'}
+                </Text>
+              </Box>
+
+              {/* Add Member Section */}
+              <Box p={4} bg={modalBg} borderRadius="md">
+                <Text fontWeight="medium" mb={3}>
+                  Add New Member
+                </Text>
+                <HStack>
+                  <Input
+                    placeholder="Enter email address"
+                    value={memberEmail}
+                    onChange={(e) => setMemberEmail(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddMember();
+                      }
+                    }}
+                  />
+                  <Button
+                    colorScheme="brand"
+                    onClick={handleAddMember}
+                    isLoading={isAddingMember}
+                    leftIcon={<FaUserPlus />}
+                    flexShrink={0}
+                  >
+                    Add
+                  </Button>
+                </HStack>
+                <Text fontSize="xs" color={textColor} mt={2} opacity={0.8}>
+                  The user must have an account to be added to the project.
+                </Text>
+              </Box>
+
+              {/* Current Members List */}
+              <Box>
+                <Text fontWeight="medium" mb={3}>
+                  Current Members ({projectMembers.length})
+                </Text>
+                {isLoadingMembers ? (
+                  <Center py={4}>
+                    <Spinner size="sm" color="brand.500" />
+                  </Center>
+                ) : projectMembers.length > 0 ? (
+                  <VStack align="stretch" spacing={2}>
+                    {projectMembers.map((member) => (
+                      <HStack
+                        key={member.uid}
+                        p={3}
+                        bg={cardBg}
+                        borderRadius="md"
+                        borderWidth="1px"
+                        borderColor={borderColor}
+                        justify="space-between"
+                      >
+                        <VStack align="start" spacing={0} flex="1">
+                          <Text fontWeight="medium">{member.displayName}</Text>
+                          <Text fontSize="sm" color={textColor} opacity={0.8}>
+                            {member.email}
+                          </Text>
+                        </VStack>
+                        <IconButton
+                          aria-label="Remove member"
+                          icon={<FaTrash />}
+                          size="sm"
+                          variant="ghost"
+                          colorScheme="red"
+                          onClick={() => handleRemoveMember(member.uid)}
+                        />
+                      </HStack>
+                    ))}
+                  </VStack>
+                ) : (
+                  <Box
+                    p={4}
+                    bg={cardBg}
+                    borderRadius="md"
+                    borderWidth="1px"
+                    borderColor={borderColor}
+                    textAlign="center"
+                  >
+                    <Text color={textColor} opacity={0.7} fontSize="sm">
+                      No members added yet. You are the only one with access to this project.
+                    </Text>
+                  </Box>
+                )}
+      </Box>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={onMemberClose}>Close</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

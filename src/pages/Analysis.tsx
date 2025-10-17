@@ -91,7 +91,8 @@ interface Project {
   id: string;
   name: string;
   description: string;
-  userId: string;
+  ownerId: string;  // Changed from userId
+  members: string[]; // Array of user UIDs who have access
   createdAt: Timestamp;
 }
 
@@ -215,13 +216,38 @@ const Analysis = () => {
     const fetchProjects = async () => {
       if (!currentUser) return;
       try {
-        const q = query(
+        // Fetch projects owned by the user
+        const ownedQuery = query(
           collection(db, 'projects'),
-          where('userId', '==', currentUser.uid)
+          where('ownerId', '==', currentUser.uid)
         );
-        const querySnapshot = await getDocs(q);
-        const projectsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-        setProjects(projectsData);
+        
+        // Fetch projects where user is a member
+        const sharedQuery = query(
+          collection(db, 'projects'),
+          where('members', 'array-contains', currentUser.uid)
+        );
+        
+        const [ownedSnapshot, sharedSnapshot] = await Promise.all([
+          getDocs(ownedQuery),
+          getDocs(sharedQuery)
+        ]);
+        
+        const ownedProjects = ownedSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Project[];
+        
+        const sharedProjects = sharedSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Project[];
+        
+        // Combine and sort by createdAt
+        const allProjects = [...ownedProjects, ...sharedProjects]
+          .sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+        
+        setProjects(allProjects);
       } catch (error) {
         console.error('Error fetching projects:', error);
       }
@@ -239,13 +265,20 @@ const Analysis = () => {
 
       try {
         setIsLoadingHistory(true);
-        let q = query(
-          collection(db, 'analyses'),
-          where('userId', '==', currentUser.uid)
-        );
         
+        // If a project is selected, show ALL images in that project (collaborative view)
+        // If no project is selected, show only the user's own images
+        let q;
         if (selectedProjectId) {
-          q = query(q, where('projectId', '==', selectedProjectId));
+          q = query(
+            collection(db, 'analyses'),
+            where('projectId', '==', selectedProjectId)
+          );
+        } else {
+          q = query(
+            collection(db, 'analyses'),
+            where('userId', '==', currentUser.uid)
+          );
         }
         
         if (sortBy === 'date') {
@@ -649,7 +682,7 @@ const Analysis = () => {
                   <Alert status="info" mt={2} borderRadius="md">
                     <AlertIcon />
                     <Text fontSize="sm">
-                      No projects yet. Visit the Projects page to create one.
+                      No projects yet. Create a project in the Dashboard.
                     </Text>
                   </Alert>
                 )}
