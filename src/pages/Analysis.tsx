@@ -55,7 +55,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface Prediction {
   species: string;
-  confidence: number;
   bbox?: {
     x1: number;
     y1: number;
@@ -79,7 +78,6 @@ interface Analysis {
   imageUrl: string;
   storagePath: string;
   species: string;
-  confidence: number;
   timestamp: Timestamp;
   projectId: string;
   userId: string;
@@ -97,26 +95,41 @@ interface Project {
 }
 
 // Mock function to simulate API call to your FastAPI backend
-const analyzeImage = async (_imageUrl: string): Promise<Prediction> => {
-  // In a real implementation, you would call your FastAPI endpoint here
-  const speciesList = ['Scallop', 'Roundfish', 'Crab', 'Whelk', 'Skate', 'Flatfish', 'Eel'];
-  const randomSpecies = speciesList[Math.floor(Math.random() * speciesList.length)];
-  const confidence = Math.random() * 0.5 + 0.5;
-  
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        species: randomSpecies,
-        confidence: parseFloat(confidence.toFixed(2)),
-        bbox: {
-          x1: Math.random() * 0.6,
-          y1: Math.random() * 0.6,
-          x2: Math.random() * 0.4 + 0.6,
-          y2: Math.random() * 0.4 + 0.6
-        }
-      });
-    }, 1500);
-  });
+const analyzeImage = async (file: File): Promise<Prediction> => {
+  try {
+    // Create FormData to send the actual file
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Call the AquaSense API endpoint
+    const response = await fetch('https://aquasense-api.onrender.com/predict', {
+      method: 'POST',
+      body: formData // Don't set Content-Type header - browser will set it with boundary
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API error response:', errorText);
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('API response:', data);
+    
+    // Transform the API response to match our Prediction interface
+    return {
+      species: data.predicted_species || data.species || data.class_name || 'Unknown',
+      bbox: data.bbox || data.bounding_box || {
+        x1: 0,
+        y1: 0,
+        x2: 1,
+        y2: 1
+      }
+    };
+  } catch (error) {
+    console.error('Error calling AquaSense API:', error);
+    throw new Error('Failed to analyze image. Please try again.');
+  }
 };
 
 const spin = keyframes`
@@ -140,7 +153,7 @@ const Analysis = () => {
   // History state
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'confidence'>('date');
+  const [sortBy, setSortBy] = useState<'date'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [speciesFilter, setSpeciesFilter] = useState<string>('all');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -283,8 +296,6 @@ const Analysis = () => {
         
         if (sortBy === 'date') {
           q = query(q, orderBy('timestamp', sortOrder));
-        } else {
-          q = query(q, orderBy('confidence', sortOrder));
         }
         const querySnapshot = await getDocs(q);
         
@@ -492,10 +503,11 @@ const Analysis = () => {
       }
       
       // Analyze and store results
-      const analysisPromises = successfulUploads.map(async (result, index) => {
+      const analysisPromises = files.slice(0, successfulUploads.length).map(async (file, index) => {
         try {
+          const result = successfulUploads[index];
           console.log('Processing upload result:', result); // Debug log
-          const prediction = await analyzeImage(result.downloadURL);
+          const prediction = await analyzeImage(file);
           
           // Validate required data before saving
           if (!result.storagePath || !result.downloadURL) {
@@ -511,7 +523,6 @@ const Analysis = () => {
             storagePath: result.storagePath,
             imageUrl: result.downloadURL,
             species: prediction.species,
-            confidence: prediction.confidence,
             timestamp: serverTimestamp(),
             bbox: prediction.bbox
           });
@@ -593,11 +604,10 @@ const Analysis = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Species', 'Confidence', 'Location', 'Project', 'Notes'];
+    const headers = ['Date', 'Species', 'Location', 'Project', 'Notes'];
     const rows = analyses.map(analysis => [
       analysis.timestamp.toDate().toLocaleString(),
       analysis.species,
-      analysis.confidence.toString(),
       analysis.location || '',
       projects.find(p => p.id === analysis.projectId)?.name || '',
       analysis.notes || ''
@@ -866,7 +876,6 @@ const Analysis = () => {
                                   {file.prediction.species}
                                 </Badge>
                                 <Text fontSize="xs" color="gray.500">
-                                  Confidence: {Math.round(file.prediction.confidence * 100)}%
                                 </Text>
                               </VStack>
                             )}
@@ -950,12 +959,6 @@ const Analysis = () => {
                         </MenuItem>
                         <MenuItem onClick={() => { setSortBy('date'); setSortOrder('asc'); }}>
                           Oldest First
-                        </MenuItem>
-                        <MenuItem onClick={() => { setSortBy('confidence'); setSortOrder('desc'); }}>
-                          Highest Confidence
-                        </MenuItem>
-                        <MenuItem onClick={() => { setSortBy('confidence'); setSortOrder('asc'); }}>
-                          Lowest Confidence
                         </MenuItem>
                       </MenuList>
                     </Menu>
@@ -1067,7 +1070,6 @@ const Analysis = () => {
                                 colorScheme={getSpeciesBadgeColor(analysis.species)}
                                 fontSize="sm"
                               >
-                                {Math.round(analysis.confidence * 100)}%
                               </Badge>
                             </Flex>
 

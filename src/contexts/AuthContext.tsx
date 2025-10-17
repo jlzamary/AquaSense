@@ -10,7 +10,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 
 type User = FirebaseUser | null;
@@ -39,6 +39,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper function to ensure user document exists in Firestore
+  const ensureUserDocument = async (user: FirebaseUser) => {
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      // Only create if document doesn't exist
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || 'Anonymous',
+          createdAt: serverTimestamp(),
+        });
+        console.log('Created missing user document for:', user.email);
+      }
+    } catch (error) {
+      console.error('Error ensuring user document:', error);
+      // Don't throw - we don't want to block login if this fails
+    }
+  };
+
   const signUp = async (email: string, password: string, displayName: string) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -59,8 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signIn = (email: string, password: string) => {
-    return signInWithEmailAndPassword(auth, email, password);
+  const signIn = async (email: string, password: string) => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    
+    // Ensure user document exists (for legacy users who signed up before we added this)
+    await ensureUserDocument(userCredential.user);
+    
+    return userCredential;
   };
 
   const signOut = () => {
@@ -76,13 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       
-      // Create user document if it doesn't exist (for first-time Google users)
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        uid: userCredential.user.uid,
-        email: userCredential.user.email,
-        displayName: userCredential.user.displayName || 'Anonymous',
-        createdAt: serverTimestamp(),
-      }, { merge: true }); // merge: true prevents overwriting existing data
+      // Ensure user document exists
+      await ensureUserDocument(userCredential.user);
       
       return userCredential;
     } catch (error) {
@@ -92,8 +114,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      
+      // Ensure user document exists for already logged-in users
+      if (user) {
+        await ensureUserDocument(user);
+      }
+      
       setLoading(false);
     });
 
