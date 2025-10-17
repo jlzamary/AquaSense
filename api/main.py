@@ -29,13 +29,21 @@ app = FastAPI(
     version=settings.VERSION
 )
 
-# CORS middleware
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],    # Allow all for website integration and use 
+    allow_origins=[
+        "http://localhost:3000",  # React default port
+        "http://localhost:5173",  # Vite default port
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "null",  # For local file:// protocol
+        "https://www.aquasense.space",  # Your friend's website
+        "https://aquasense.space",  # Without www
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Load classification model at startup
