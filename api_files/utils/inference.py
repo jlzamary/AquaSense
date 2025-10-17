@@ -8,8 +8,15 @@ def load_model(checkpoint_path):
     from torchvision.models import resnet50
     model = resnet50(weights=None)
     model.fc = torch.nn.Linear(model.fc.in_features, 7)
+    
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
-    model.load_state_dict(checkpoint['model_state_dict'])
+    
+    # Try loading with 'model_state_dict' key first, otherwise load directly
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        model.load_state_dict(checkpoint)
+    
     model.eval()
     return model
 
