@@ -49,7 +49,7 @@ import { FaUpload, FaImage, FaTimes, FaSpinner, FaCheck, FaFolder, FaFilter, FaS
 import { SearchIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import { keyframes } from '@emotion/react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, deleteDoc, doc, Timestamp, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, deleteDoc, doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { storage, db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -99,6 +99,7 @@ interface Analysis {
   analysisMode?: 'predict' | 'detect'; // Track which mode was used
   detections?: Detection[]; // For detect mode results
   annotatedImageUrl?: string; // For detect mode - image with bounding boxes
+  uploader?: { displayName: string; email: string }; // Uploader information
 }
 
 interface Project {
@@ -194,6 +195,7 @@ const Analysis = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [speciesFilter, setSpeciesFilter] = useState<string>('all');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [uploaderInfo, setUploaderInfo] = useState<Record<string, { displayName: string; email: string }>>({});
   
   // Shared state
   const [projects, setProjects] = useState<Project[]>([]);
@@ -212,11 +214,11 @@ const Analysis = () => {
     const newFiles = acceptedFiles.map(file => {
       // Create an object that properly includes the File and our custom properties
       const uploadedFile = Object.assign(file, {
-        preview: URL.createObjectURL(file),
-        uploadProgress: 0,
-        uploadComplete: false,
-        error: undefined,
-        prediction: null
+      preview: URL.createObjectURL(file),
+      uploadProgress: 0,
+      uploadComplete: false,
+      error: undefined,
+      prediction: null
       }) as UploadedFile;
       return uploadedFile;
     });
@@ -307,6 +309,30 @@ const Analysis = () => {
   }, [currentUser]);
 
   useEffect(() => {
+    // Function to fetch uploader information for a user ID
+    const fetchUploaderInfo = async (userId: string): Promise<{ displayName: string; email: string }> => {
+      if (uploaderInfo[userId]) {
+        return uploaderInfo[userId];
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const info = {
+            displayName: userData.displayName || 'Unknown User',
+            email: userData.email || 'unknown@example.com'
+          };
+          setUploaderInfo(prev => ({ ...prev, [userId]: info }));
+          return info;
+        }
+      } catch (error) {
+        console.error('Error fetching uploader info:', error);
+      }
+      
+      return { displayName: 'Unknown User', email: 'unknown@example.com' };
+    };
+
     const fetchAnalyses = async () => {
       if (!currentUser) {
         setIsLoadingHistory(false);
@@ -350,6 +376,9 @@ const Analysis = () => {
             
             console.log('Fetched analysis doc:', snap.id, 'Mode:', data.analysisMode, 'ProjectId:', data.projectId, 'Has annotatedImageUrl:', !!data.annotatedImageUrl);
 
+            // Fetch uploader information
+            const uploader = await fetchUploaderInfo(data.userId);
+
             // Prefer explicit fields if present
             const storedUrl: string | undefined = data.downloadURL || data.imageUrl;
             const storedPath: string | undefined = data.storagePath || '';
@@ -366,6 +395,7 @@ const Analysis = () => {
                   ...data,
                   imageUrl: storedUrl,
                   storagePath: storedPath || storedUrl, // keep something for reference
+                  uploader: uploader, // Add uploader information
                 } as Analysis;
                 console.log('Returning analysis with annotatedImageUrl:', analysis.annotatedImageUrl);
                 return analysis;
@@ -388,6 +418,7 @@ const Analysis = () => {
                     ...data,
                     imageUrl: freshUrl,
                     storagePath: storedPath,
+                    uploader: uploader, // Add uploader information
                   } as Analysis;
                 } catch (e) {
                   console.error('getDownloadURL failed for', snap.id, storedPath, e);
@@ -402,6 +433,7 @@ const Analysis = () => {
                 ...data,
                 imageUrl: '',
                 storagePath: '',
+                uploader: uploader, // Add uploader information
               } as Analysis;
             } catch (err) {
               console.error('Error processing analysis doc', snap.id, err);
@@ -410,6 +442,7 @@ const Analysis = () => {
                 ...data,
                 imageUrl: '',
                 storagePath: '',
+                uploader: uploader, // Add uploader information
               } as Analysis;
             }
           })
@@ -460,60 +493,60 @@ const Analysis = () => {
       console.log('Generated storage path:', storagePath); // Debug log
       
       const storageRef = ref(storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      
+    const uploadTask = uploadBytesResumable(storageRef, file);
+    
       return new Promise<{ downloadURL: string; storagePath: string }>((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setFiles(prevFiles => {
-              const newFiles = [...prevFiles];
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setFiles(prevFiles => {
+            const newFiles = [...prevFiles];
               newFiles[index] = { 
                 ...newFiles[index], 
                 uploadProgress: progress,
                 storagePath // Store the path for later use
               };
-              return newFiles;
-            });
-          },
-          (error) => {
-            console.error('Upload error:', error);
+            return newFiles;
+          });
+        },
+        (error) => {
+          console.error('Upload error:', error);
+          setFiles(prevFiles => {
+            const newFiles = [...prevFiles];
+            newFiles[index] = { 
+              ...newFiles[index], 
+              error: 'Upload failed. Please try again.',
+              uploadProgress: 0 
+            };
+            return newFiles;
+          });
+          reject(error);
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('Upload successful:', { storagePath, downloadURL }); // Debug log
+            
             setFiles(prevFiles => {
               const newFiles = [...prevFiles];
               newFiles[index] = { 
                 ...newFiles[index], 
-                error: 'Upload failed. Please try again.',
-                uploadProgress: 0 
-              };
-              return newFiles;
-            });
-            reject(error);
-          },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log('Upload successful:', { storagePath, downloadURL }); // Debug log
-              
-              setFiles(prevFiles => {
-                const newFiles = [...prevFiles];
-                newFiles[index] = { 
-                  ...newFiles[index], 
-                  uploadProgress: 100, 
+                uploadProgress: 100, 
                   uploadComplete: true,
                   storagePath,
                   downloadURL
-                };
-                return newFiles;
-              });
+              };
+              return newFiles;
+            });
               resolve({ downloadURL, storagePath });
-            } catch (error) {
-              console.error('Error getting download URL:', error);
-              reject(error);
-            }
+          } catch (error) {
+            console.error('Error getting download URL:', error);
+            reject(error);
           }
-        );
-      });
+        }
+      );
+    });
     } catch (error) {
       console.error('Error in uploadFile:', error);
       throw error;
@@ -799,39 +832,39 @@ const Analysis = () => {
                             : 'Detects multiple species and returns an image with bounding boxes'
                           }
                         </Text>
-                      </Box>
-                    </HStack>
-                  </CardBody>
-                </Card>
-
-                {/* Dropzone */}
+              </Box>
+            </HStack>
+          </CardBody>
+        </Card>
+        
+        {/* Dropzone */}
                 <Box w="100%">
-                  <Box
-                    {...getRootProps()}
-                    borderWidth={2}
-                    borderStyle="dashed"
-                    borderColor={isDragActive ? 'brand.400' : 'gray.300'}
-                    borderRadius="lg"
-                    p={10}
-                    textAlign="center"
-                    bg={isDragActive ? 'brand.50' : 'transparent'}
-                    cursor="pointer"
-                    transition="all 0.2s"
-                    _hover={{ borderColor: 'brand.300' }}
+        <Box
+          {...getRootProps()}
+          borderWidth={2}
+          borderStyle="dashed"
+          borderColor={isDragActive ? 'brand.400' : 'gray.300'}
+          borderRadius="lg"
+          p={10}
+          textAlign="center"
+          bg={isDragActive ? 'brand.50' : 'transparent'}
+          cursor="pointer"
+          transition="all 0.2s"
+          _hover={{ borderColor: 'brand.300' }}
                     w="100%"
-                  >
-                    <input {...getInputProps()} />
-                    <VStack spacing={4}>
-                      <Icon as={FaUpload} boxSize={8} color="brand.500" />
-                      <Box>
-                        <Text fontWeight="medium" fontSize="lg">
-                          {isDragActive ? 'Drop the files here' : 'Drag & drop images here, or click to select files'}
-                        </Text>
-                        <Text fontSize="sm" color="gray.500" mt={1}>
-                          Supports JPG, JPEG, PNG (max 10MB each)
-                        </Text>
-                      </Box>
-                    </VStack>
+        >
+          <input {...getInputProps()} />
+          <VStack spacing={4}>
+            <Icon as={FaUpload} boxSize={8} color="brand.500" />
+            <Box>
+              <Text fontWeight="medium" fontSize="lg">
+                {isDragActive ? 'Drop the files here' : 'Drag & drop images here, or click to select files'}
+              </Text>
+              <Text fontSize="sm" color="gray.500" mt={1}>
+                Supports JPG, JPEG, PNG (max 10MB each)
+              </Text>
+            </Box>
+          </VStack>
                   </Box>
 
                   {/* Hidden camera input */}
@@ -858,147 +891,147 @@ const Analysis = () => {
                   >
                     Take Photo
                   </Button>
-                </Box>
-
-                {/* Uploaded files */}
-                {files.length > 0 && (
+        </Box>
+        
+        {/* Uploaded files */}
+        {files.length > 0 && (
                   <Box w="100%">
-                    <HStack justify="space-between" mb={4}>
-                      <Text fontWeight="medium">
-                        {files.length} {files.length === 1 ? 'file' : 'files'} selected
-                      </Text>
-                      <Button
-                        colorScheme="brand"
-                        onClick={analyzeFiles}
-                        isLoading={isAnalyzing}
-                        loadingText="Analyzing..."
-                        leftIcon={<FaImage />}
-                        isDisabled={files.length === 0 || isAnalyzing}
-                      >
-                        {analysisComplete ? 'Re-analyze' : 'Analyze Images'}
-                      </Button>
-                    </HStack>
-                    
-                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={4}>
-                      {files.map((file, index) => (
-                        <Card 
-                          key={index} 
-                          overflow="hidden"
-                          borderWidth="1px"
-                          borderColor={borderColor}
-                          bg={cardBg}
-                        >
-                          <Box 
-                            position="relative" 
-                            h="120px" 
-                            bg="gray.100"
-                            cursor="pointer"
+            <HStack justify="space-between" mb={4}>
+              <Text fontWeight="medium">
+                {files.length} {files.length === 1 ? 'file' : 'files'} selected
+              </Text>
+              <Button
+                colorScheme="brand"
+                onClick={analyzeFiles}
+                isLoading={isAnalyzing}
+                loadingText="Analyzing..."
+                leftIcon={<FaImage />}
+                isDisabled={files.length === 0 || isAnalyzing}
+              >
+                {analysisComplete ? 'Re-analyze' : 'Analyze Images'}
+              </Button>
+            </HStack>
+            
+            <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={4}>
+              {files.map((file, index) => (
+                <Card 
+                  key={index} 
+                  overflow="hidden"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  bg={cardBg}
+                >
+                  <Box 
+                    position="relative" 
+                    h="120px" 
+                    bg="gray.100"
+                    cursor="pointer"
                             onClick={() => {
                               // Show annotated image if available, otherwise show preview
                               const imageToShow = file.prediction?.annotatedImageUrl || file.preview;
                               if (imageToShow) openImagePreview(imageToShow);
                             }}
-                          >
-                            <Image
+                  >
+                    <Image
                               src={file.prediction?.annotatedImageUrl || file.preview}
-                              alt={file.name}
-                              objectFit="cover"
-                              w="100%"
-                              h="100%"
-                            />
-                            {file.uploadProgress && file.uploadProgress < 100 && (
-                              <Box position="absolute" bottom={0} left={0} right={0} p={2}>
-                                <Progress 
-                                  value={file.uploadProgress} 
-                                  size="xs" 
-                                  colorScheme="brand"
-                                  borderRadius="full"
-                                />
-                              </Box>
-                            )}
-                            {file.uploadComplete && !file.prediction && !file.error && (
-                              <Box 
-                                position="absolute" 
-                                top={2} 
-                                right={2} 
-                                bg="green.500" 
-                                color="white" 
-                                p={1} 
-                                borderRadius="full"
-                              >
-                                <Icon as={FaCheck} boxSize={3} />
-                              </Box>
-                            )}
-                            {file.error && (
-                              <Box 
-                                position="absolute" 
-                                top={0} 
-                                left={0} 
-                                right={0} 
-                                bottom={0} 
-                                bg="rgba(0,0,0,0.7)" 
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                                color="white"
-                                textAlign="center"
-                                p={2}
-                              >
-                                <Text fontSize="xs" fontWeight="bold">Error: {file.error}</Text>
-                              </Box>
-                            )}
-                          </Box>
-                          
-                          <CardBody p={3}>
-                            <Text 
-                              fontSize="xs" 
-                              fontWeight="medium" 
-                              noOfLines={1} 
-                              title={file.name}
-                              mb={1}
-                            >
-                              {file.name}
-                            </Text>
-                            
-                            {file.prediction && (
-                              <VStack align="start" spacing={1} mt={2}>
-                                <Badge 
-                                  colorScheme={getSpeciesBadgeColor(file.prediction.species)}
-                                  fontSize="0.6rem"
-                                  px={2}
-                                  py={0.5}
-                                  borderRadius="md"
-                                >
-                                  {file.prediction.species}
-                                </Badge>
+                      alt={file.name}
+                      objectFit="cover"
+                      w="100%"
+                      h="100%"
+                    />
+                    {file.uploadProgress && file.uploadProgress < 100 && (
+                      <Box position="absolute" bottom={0} left={0} right={0} p={2}>
+                        <Progress 
+                          value={file.uploadProgress} 
+                          size="xs" 
+                          colorScheme="brand"
+                          borderRadius="full"
+                        />
+                      </Box>
+                    )}
+                    {file.uploadComplete && !file.prediction && !file.error && (
+                      <Box 
+                        position="absolute" 
+                        top={2} 
+                        right={2} 
+                        bg="green.500" 
+                        color="white" 
+                        p={1} 
+                        borderRadius="full"
+                      >
+                        <Icon as={FaCheck} boxSize={3} />
+                      </Box>
+                    )}
+                    {file.error && (
+                      <Box 
+                        position="absolute" 
+                        top={0} 
+                        left={0} 
+                        right={0} 
+                        bottom={0} 
+                        bg="rgba(0,0,0,0.7)" 
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        color="white"
+                        textAlign="center"
+                        p={2}
+                      >
+                        <Text fontSize="xs" fontWeight="bold">Error: {file.error}</Text>
+                      </Box>
+                    )}
+                  </Box>
+                  
+                  <CardBody p={3}>
+                    <Text 
+                      fontSize="xs" 
+                      fontWeight="medium" 
+                      noOfLines={1} 
+                      title={file.name}
+                      mb={1}
+                    >
+                      {file.name}
+                    </Text>
+                    
+                    {file.prediction && (
+                      <VStack align="start" spacing={1} mt={2}>
+                        <Badge 
+                          colorScheme={getSpeciesBadgeColor(file.prediction.species)}
+                          fontSize="0.6rem"
+                          px={2}
+                          py={0.5}
+                          borderRadius="md"
+                        >
+                          {file.prediction.species}
+                        </Badge>
                                 {file.prediction.detections && file.prediction.detections.length > 0 && (
                                   <Text fontSize="xs" color="gray.600" fontWeight="medium">
                                     {file.prediction.detections.length} detection{file.prediction.detections.length > 1 ? 's' : ''}
-                                  </Text>
+                        </Text>
                                 )}
-                              </VStack>
-                            )}
-                          </CardBody>
-                          
-                          <CardFooter p={2} pt={0}>
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              colorScheme="red"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeFile(index);
-                              }}
-                              leftIcon={<FaTimes />}
-                            >
-                              Remove
-                            </Button>
-                          </CardFooter>
-                        </Card>
-                      ))}
-                    </SimpleGrid>
-                  </Box>
-                )}
+                      </VStack>
+                    )}
+                  </CardBody>
+                  
+                  <CardFooter p={2} pt={0}>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      colorScheme="red"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFile(index);
+                      }}
+                      leftIcon={<FaTimes />}
+                    >
+                      Remove
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </SimpleGrid>
+          </Box>
+        )}
               </VStack>
             </TabPanel>
 
@@ -1070,14 +1103,14 @@ const Analysis = () => {
                         variant="outline"
                       />
                     </Tooltip>
-                  </HStack>
-                </SimpleGrid>
+                    </HStack>
+            </SimpleGrid>
 
                 {/* Analysis Grid */}
-                {isLoadingHistory ? (
+          {isLoadingHistory ? (
                   <Box py={10} display="flex" alignItems="center" justifyContent="center">
-                    <Icon as={FaSpinner} animation={`${spin} 1s linear infinite`} boxSize={8} color="brand.500" />
-                  </Box>
+              <Icon as={FaSpinner} animation={`${spin} 1s linear infinite`} boxSize={8} color="brand.500" />
+            </Box>
                 ) : filteredAnalyses.length === 0 ? (
                   <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
                     <CardBody textAlign="center" py={10}>
@@ -1089,19 +1122,19 @@ const Analysis = () => {
                 ) : (
                   <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                     {filteredAnalyses.map((analysis) => (
-                      <Card
+                <Card 
                         key={analysis.id}
                         bg={cardBg}
-                        borderWidth="1px"
-                        borderColor={borderColor}
+                  borderWidth="1px"
+                  borderColor={borderColor}
                         overflow="hidden"
                         _hover={{ transform: 'translateY(-4px)', shadow: 'md' }}
-                        transition="all 0.2s"
-                      >
+                  transition="all 0.2s"
+                >
                         <CardBody>
-                          <Box
+                  <Box 
                             h="200px"
-                            bg="gray.100"
+                    bg="gray.100"
                             mb={4}
                             borderRadius="md"
                             overflow="hidden"
@@ -1114,12 +1147,12 @@ const Analysis = () => {
                             }}
                           >
                             {(analysis.annotatedImageUrl || analysis.imageUrl) ? (
-                              <Image
+                    <Image
                                 src={analysis.annotatedImageUrl || analysis.imageUrl}
                                 alt="Analysis"
-                                objectFit="cover"
-                                w="100%"
-                                h="100%"
+                      objectFit="cover"
+                      w="100%"
+                      h="100%"
                                 fallback={
                                   <Box
                                     w="100%"
@@ -1146,7 +1179,7 @@ const Analysis = () => {
                                 justifyContent="center"
                               >
                                 <Icon as={FaImage} boxSize={8} color="gray.400" />
-                              </Box>
+                  </Box>
                             )}
                             {analysis.location && (
                               <Tooltip label={analysis.location}>
@@ -1157,7 +1190,7 @@ const Analysis = () => {
                                   bg="blackAlpha.600"
                                   color="white"
                                   p={2}
-                                  borderRadius="md"
+                      borderRadius="md"
                                 >
                                   <FaMapMarkerAlt />
                                 </Box>
@@ -1174,7 +1207,7 @@ const Analysis = () => {
                                 fontSize="sm"
                               >
                                 {analysis.analysisMode === 'detect' ? 'Detect' : 'Predict'}
-                              </Badge>
+                    </Badge>
                             </Flex>
 
                             {analysis.detections && analysis.detections.length > 0 && (
@@ -1190,9 +1223,9 @@ const Analysis = () => {
                                     </HStack>
                                   ))}
                                   {analysis.detections.length > 3 && (
-                                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="gray.500">
                                       +{analysis.detections.length - 3} more
-                                    </Text>
+                    </Text>
                                   )}
                                 </VStack>
                               </Box>
@@ -1202,6 +1235,12 @@ const Analysis = () => {
                               Project: {projects.find(p => p.id === analysis.projectId)?.name || 'None'}
                             </Text>
 
+                            {analysis.uploader && (
+                              <Text fontSize="sm" color="gray.500">
+                                Uploaded by: {analysis.uploader.displayName}
+                              </Text>
+                            )}
+
                             <Text fontSize="sm" color="gray.500">
                               {analysis.timestamp.toDate().toLocaleString()}
                             </Text>
@@ -1209,8 +1248,8 @@ const Analysis = () => {
                             {analysis.notes && (
                               <Text fontSize="sm" noOfLines={2}>
                                 {analysis.notes}
-                              </Text>
-                            )}
+                      </Text>
+                    )}
 
                             <HStack spacing={2} justify="flex-end">
                               <IconButton
@@ -1223,17 +1262,17 @@ const Analysis = () => {
                               />
                             </HStack>
                           </VStack>
-                        </CardBody>
-                      </Card>
-                    ))}
-                  </SimpleGrid>
-                )}
+                  </CardBody>
+                </Card>
+              ))}
+            </SimpleGrid>
+          )}
               </VStack>
             </TabPanel>
           </TabPanels>
         </Tabs>
       </VStack>
-
+      
       {/* Image Preview Modal */}
       <Modal isOpen={isOpen} onClose={onClose} size="4xl">
         <ModalOverlay />
