@@ -345,6 +345,8 @@ const Analysis = () => {
         const analysesData = await Promise.all(
           querySnapshot.docs.map(async (snap) => {
             const data = snap.data() as any;
+            
+            console.log('Fetched analysis doc:', snap.id, 'Mode:', data.analysisMode, 'Has annotatedImageUrl:', !!data.annotatedImageUrl);
 
             // Prefer explicit fields if present
             const storedUrl: string | undefined = data.downloadURL || data.imageUrl;
@@ -357,12 +359,14 @@ const Analysis = () => {
             try {
               // Case A: We already have a sane download URL
               if (looksLikeUrl(storedUrl) && !urlLooksBroken(storedUrl)) {
-                return {
+                const analysis = {
                   id: snap.id,
                   ...data,
                   imageUrl: storedUrl,
                   storagePath: storedPath || storedUrl, // keep something for reference
                 } as Analysis;
+                console.log('Returning analysis with annotatedImageUrl:', analysis.annotatedImageUrl);
+                return analysis;
               }
 
               // Case B: URL is missing or obviously broken — try to rebuild from storagePath
