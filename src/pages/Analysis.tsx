@@ -209,6 +209,8 @@ const Analysis = () => {
   // Theme
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const imagePlaceholderBg = useColorModeValue('gray.100', 'gray.700');
+  const imagePlaceholderIconColor = useColorModeValue('gray.400', 'gray.500');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => {
@@ -924,7 +926,7 @@ const Analysis = () => {
                   <Box 
                     position="relative" 
                     h="120px" 
-                    bg="gray.100"
+                    bg={imagePlaceholderBg}
                     cursor="pointer"
                             onClick={() => {
                               // Show annotated image if available, otherwise show preview
@@ -1134,11 +1136,11 @@ const Analysis = () => {
                         <CardBody>
                   <Box 
                             h="200px"
-                    bg="gray.100"
+                    bg={imagePlaceholderBg}
                             mb={4}
                             borderRadius="md"
                             overflow="hidden"
-                            position="relative"
+                    position="relative" 
                             cursor="pointer"
                             onClick={() => {
                               // Show annotated image if available (for detect mode), otherwise show original
@@ -1157,12 +1159,12 @@ const Analysis = () => {
                                   <Box
                                     w="100%"
                                     h="100%"
-                                    bg="gray.100"
+                                    bg={imagePlaceholderBg}
                                     display="flex"
                                     alignItems="center"
                                     justifyContent="center"
                                   >
-                                    <Icon as={FaImage} boxSize={8} color="gray.400" />
+                                    <Icon as={FaImage} boxSize={8} color={imagePlaceholderIconColor} />
                                   </Box>
                                 }
                                 onError={() => {
@@ -1173,12 +1175,12 @@ const Analysis = () => {
                               <Box
                                 w="100%"
                                 h="100%"
-                                bg="gray.100"
+                                bg={imagePlaceholderBg}
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
                               >
-                                <Icon as={FaImage} boxSize={8} color="gray.400" />
+                                <Icon as={FaImage} boxSize={8} color={imagePlaceholderIconColor} />
                   </Box>
                             )}
                             {analysis.location && (
@@ -1238,8 +1240,8 @@ const Analysis = () => {
                             {analysis.uploader && (
                               <Text fontSize="sm" color="gray.500">
                                 Uploaded by: {analysis.uploader.displayName}
-                              </Text>
-                            )}
+                      </Text>
+                    )}
 
                             <Text fontSize="sm" color="gray.500">
                               {analysis.timestamp.toDate().toLocaleString()}
@@ -1289,11 +1291,11 @@ const Analysis = () => {
                 objectFit="contain"
                 fallback={
                   <VStack spacing={4} py={10}>
-                    <Icon as={FaImage} boxSize={16} color="gray.400" />
+                    <Icon as={FaImage} boxSize={16} color={imagePlaceholderIconColor} />
                     <Text color="gray.500" fontSize="lg">
                       Image not available
                     </Text>
-                    <Text color="gray.400" fontSize="sm">
+                    <Text color={imagePlaceholderIconColor} fontSize="sm">
                       The image could not be loaded or may have been deleted
                     </Text>
                   </VStack>
@@ -1301,7 +1303,7 @@ const Analysis = () => {
               />
             ) : (
               <VStack spacing={4} py={10}>
-                <Icon as={FaImage} boxSize={16} color="gray.400" />
+                <Icon as={FaImage} boxSize={16} color={imagePlaceholderIconColor} />
                 <Text color="gray.500" fontSize="lg">
                   No image selected
                 </Text>
