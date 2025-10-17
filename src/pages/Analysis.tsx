@@ -138,15 +138,22 @@ const analyzeImage = async (file: File, mode: 'predict' | 'detect' = 'predict'):
 
     const data = await response.json();
     console.log('API response:', data);
+    console.log('Mode:', mode);
     
     if (mode === 'detect') {
       // Detect mode returns multiple detections with bounding boxes and an annotated image
+      console.log('Detect mode - annotated_image_url:', data.annotated_image_url);
+      console.log('Detect mode - detections:', data.detections);
+      
+      const annotatedUrl = data.annotated_image_url || data.annotatedImageUrl || data.annotated_image || '';
+      console.log('Final annotated URL:', annotatedUrl);
+      
       return {
         species: data.detections && data.detections.length > 0 
           ? data.detections.map((d: Detection) => d.species).join(', ') 
           : 'No species detected',
         detections: data.detections || [],
-        annotatedImageUrl: data.annotated_image_url || data.annotatedImageUrl || ''
+        annotatedImageUrl: annotatedUrl
       };
     } else {
       // Predict mode returns single species prediction
@@ -553,6 +560,7 @@ const Analysis = () => {
           }
 
           console.log('Saving analysis with:', { storagePath: result.storagePath, downloadURL: result.downloadURL, mode: analysisMode });
+          console.log('Prediction data:', prediction);
           
           const analysisData: any = {
             userId: currentUser.uid,
@@ -568,10 +576,13 @@ const Analysis = () => {
           if (analysisMode === 'detect') {
             analysisData.detections = prediction.detections || [];
             analysisData.annotatedImageUrl = prediction.annotatedImageUrl || '';
+            console.log('Detect mode - saving annotatedImageUrl:', analysisData.annotatedImageUrl);
+            console.log('Detect mode - saving detections:', analysisData.detections);
           } else {
             analysisData.bbox = prediction.bbox;
           }
           
+          console.log('Final analysis data to save:', analysisData);
           await addDoc(collection(db, 'analyses'), analysisData);
           
           setFiles(prevFiles => {
@@ -873,10 +884,14 @@ const Analysis = () => {
                             h="120px" 
                             bg="gray.100"
                             cursor="pointer"
-                            onClick={() => file.preview && openImagePreview(file.preview)}
+                            onClick={() => {
+                              // Show annotated image if available, otherwise show preview
+                              const imageToShow = file.prediction?.annotatedImageUrl || file.preview;
+                              if (imageToShow) openImagePreview(imageToShow);
+                            }}
                           >
                             <Image
-                              src={file.preview}
+                              src={file.prediction?.annotatedImageUrl || file.preview}
                               alt={file.name}
                               objectFit="cover"
                               w="100%"
@@ -951,19 +966,6 @@ const Analysis = () => {
                                   <Text fontSize="xs" color="gray.600" fontWeight="medium">
                                     {file.prediction.detections.length} detection{file.prediction.detections.length > 1 ? 's' : ''}
                                   </Text>
-                                )}
-                                {file.prediction.annotatedImageUrl && (
-                                  <Button
-                                    size="xs"
-                                    variant="outline"
-                                    colorScheme="brand"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openImagePreview(file.prediction!.annotatedImageUrl!);
-                                    }}
-                                  >
-                                    View Detections
-                                  </Button>
                                 )}
                               </VStack>
                             )}
@@ -1096,11 +1098,15 @@ const Analysis = () => {
                             overflow="hidden"
                             position="relative"
                             cursor="pointer"
-                            onClick={() => analysis.imageUrl && openImagePreview(analysis.imageUrl)}
+                            onClick={() => {
+                              // Show annotated image if available (for detect mode), otherwise show original
+                              const imageToShow = analysis.annotatedImageUrl || analysis.imageUrl;
+                              if (imageToShow) openImagePreview(imageToShow);
+                            }}
                           >
-                            {analysis.imageUrl ? (
+                            {(analysis.annotatedImageUrl || analysis.imageUrl) ? (
                               <Image
-                                src={analysis.imageUrl}
+                                src={analysis.annotatedImageUrl || analysis.imageUrl}
                                 alt="Analysis"
                                 objectFit="cover"
                                 w="100%"
@@ -1118,7 +1124,7 @@ const Analysis = () => {
                                   </Box>
                                 }
                                 onError={() => {
-                                  console.warn('Bad URL:', analysis.imageUrl);
+                                  console.warn('Bad URL:', analysis.annotatedImageUrl || analysis.imageUrl);
                                 }}
                               />
                             ) : (
@@ -1181,17 +1187,6 @@ const Analysis = () => {
                                   )}
                                 </VStack>
                               </Box>
-                            )}
-
-                            {analysis.annotatedImageUrl && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                colorScheme="brand"
-                                onClick={() => openImagePreview(analysis.annotatedImageUrl!)}
-                              >
-                                View Annotated Image
-                              </Button>
                             )}
 
                             <Text fontSize="sm" color="gray.500">
