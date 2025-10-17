@@ -40,6 +40,7 @@ Training Strategy:
 - The **entire model** was then fine-tuned for several additional epochs.  
 
 **Result:**  
+![ml1](readme_photos/output.png)
 Final accuracy: **~86%**  
 This approach significantly improved convergence speed and overall classification performance.
 
