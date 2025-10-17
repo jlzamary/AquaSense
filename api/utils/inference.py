@@ -1,6 +1,6 @@
 # utils/inference.py
 import torch
-from torchvision import transforms
+from torchvision import transforms, models
 from PIL import Image
 import io
 
