@@ -283,11 +283,13 @@ const Analysis = () => {
         // If no project is selected, show only the user's own images
         let q;
         if (selectedProjectId) {
+          console.log('Fetching analyses for project:', selectedProjectId);
           q = query(
             collection(db, 'analyses'),
             where('projectId', '==', selectedProjectId)
           );
         } else {
+          console.log('Fetching analyses for current user only');
           q = query(
             collection(db, 'analyses'),
             where('userId', '==', currentUser.uid)
@@ -297,7 +299,10 @@ const Analysis = () => {
         if (sortBy === 'date') {
           q = query(q, orderBy('timestamp', sortOrder));
         }
+        
+        console.log('Executing query...');
         const querySnapshot = await getDocs(q);
+        console.log(`Found ${querySnapshot.docs.length} analyses`);
         
         // Get all analyses data and ensure image URLs are valid
         const analysesData = await Promise.all(
@@ -368,11 +373,13 @@ const Analysis = () => {
         );
         
         setAnalyses(analysesData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching analyses:', error);
+        console.error('Error code:', error?.code);
+        console.error('Error message:', error?.message);
         toast({
-          title: 'Error',
-          description: 'Failed to load analyses.',
+          title: 'Error loading analyses',
+          description: error?.message || 'Failed to load analyses. Check console for details.',
           status: 'error',
           duration: 5000,
           isClosable: true,
