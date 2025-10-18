@@ -15,8 +15,9 @@ For more information about our project, methods, and team members, please refer 
 
 - [About](#-about)
 - [Methods](#-methods)
-- [Application Demo](#-application-demo)
 - [Meet the Team](#-meet-the-team)
+- [Built With](#-built-with)
+
 ---
 ## 🔬 About
 
@@ -248,7 +249,6 @@ The API enables rapid analysis of benthic survey imagery, processing individual 
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![Material-UI](https://img.shields.io/badge/Material--UI-0081CB?style=for-the-badge&logo=material-ui&logoColor=white)
 ![ESLint](https://img.shields.io/badge/ESLint-4B32C3?style=for-the-badge&logo=eslint&logoColor=white)
-![Axios](https://img.shields.io/badge/Axios-5A29E4?style=for-the-badge&logo=axios&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
 ![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
 ![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
