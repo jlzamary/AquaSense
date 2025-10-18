@@ -124,41 +124,42 @@ These results demonstrate that the model effectively identifies and localizes mu
 ---
 
 ### Frontend Interface & Backend Infrastructure
-Frontend
 
-The frontend handles user authentication, routing, and API requests.
-It uses Firebase for authentication, Chakra UI for styling, and Vercel for deployment.
+#### User Experience
 
-Tech Stack: React (Vite), Chakra UI, Firebase, Axios, Vercel
+**Authentication & Security**
+- Firebase Authentication with email/password and verification
+- Protected routes ensuring secure access to analysis features
+- Persistent sessions with automatic token refresh
 
-Environment Variables:
-The frontend requires Firebase configuration and an API base URL pointing to the backend (for example: VITE_API_BASE_URL=https://aquasense-api.onrender.com).
+**Core Pages**
 
-Development:
-Run npm install and npm run dev to start the local server on http://localhost:5173.
+**Home** - Landing page with project overview and call-to-action  
+**Dashboard** - Centralized hub displaying recent analyses and project summaries  
+**Analysis** - Dual-mode image upload interface:
+  - Single species classification with instant results
+  - Multi-species detection with annotated bounding boxes
+  - Real-time processing status and error handling
 
-Deployment:
-The frontend is deployed on Vercel. Add all environment variables under Project Settings → Environment Variables.
-New commits to the main branch automatically trigger redeployment.
+**Projects** - Collaborative project management:
+  - Create and organize marine survey projects
+  - Track analysis history per project
+  - Share projects with team members
 
-Backend
+**Metrics** - Advanced analytics dashboard:
+  - Species distribution charts and statistics
+  - Historical trend visualization
+  - Export capabilities for research reporting
 
-The backend provides the API layer for model inference and data processing.
-It uses FastAPI and Uvicorn, and is deployed on Render.
+#### Technical Implementation
 
-Tech Stack: FastAPI, Python 3.11+, Uvicorn, Pydantic, TensorFlow or PyTorch, Render
-
-Environment Variables:
-Define variables such as MODEL_PATH and ALLOWED_ORIGINS for CORS configuration.
-Example:
-ALLOWED_ORIGINS=https://www.aquasense.space,https://aquasense.space,http://localhost:5173
-
-Development:
-Install dependencies with pip install -r requirements.txt and run uvicorn app.main:app --reload locally on http://localhost:8000.
-
-Deployment:
-The backend is hosted on Render. Set the build command to pip install -r requirements.txt
-and the start command to uvicorn app.main:app --host 0.0.0.0 --port 10000.
+**UI Framework**: Material-UI (MUI) v5 for consistent, accessible design  
+**Routing**: React Router v6 with protected route components  
+**State Management**: React Context API for authentication state  
+**API Integration**: Axios for HTTP requests to FastAPI backend  
+**Styling**: Custom theme with ocean-inspired color palette  
+**Build Tool**: Vite for lightning-fast development and optimized production builds  
+**Hosting**: Vercel with automatic deployments from GitHub
 
 ---
 
