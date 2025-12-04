@@ -11,6 +11,9 @@ For more information about our project, methods, and team members, please refer 
 
 ---
 
+> [!Warning]
+> This project was built for an AI Case-a-Thon and is no longer actively maintained. While the AquaSense website remains online until October 2026, image uploads are unavailable due to an API shutdown. Read more below.
+
 ## 📖 Table of Contents 
 
 - [About](#-about)
